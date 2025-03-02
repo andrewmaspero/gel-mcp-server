@@ -83,9 +83,8 @@ SELECT Product { name, price } FILTER .price > 100;
 Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. It's a good idea tell the LLM agent to follow the instructions provided inside the Tool before letting it play with this one. 
 
 Note: Currently only returns one console.log for some reason and can crash the server, but it has the instructions inside the tool so your LLM agent shouldn't stumble over this. If it does miss the instructions, you might have to refresh the crashed server in Cursor MCP settings/restart the server if not using Cursor. Then remind it to follow the instructions provided with the tool. 
-![image](https://github.com/user-attachments/assets/aed79dc8-d2ba-45d5-830b-1d73c04a5614)
 
-**Best practices:**
+**Tell the LLM these are the Best practices:**
 - Use `await gelClient.query()` with console.log to display results
 - Use ORDER BY with THEN, not commas (e.g., ORDER BY .field1 THEN .field2)
 - Keep code simple and focused on a single operation
@@ -104,6 +103,8 @@ console.log(await gelClient.query(`
 ```
 
 **When to use:** For complex queries that require programmatic logic or when you need to process query results with JavaScript.
+
+![image](https://github.com/user-attachments/assets/aed79dc8-d2ba-45d5-830b-1d73c04a5614)
 
 ## Learn More
 
