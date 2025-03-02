@@ -34,7 +34,7 @@ async function initGelClient() {
   try {
     // You can configure this with environment variables or directly here
     // Use the branch ID from environment or default to example
-    const branchId = process.env.GEL_BRANCH_ID || "3802d36f-f2e8-45e5-abe4-8f5d2ecdff0e";
+    const branchId = process.env.GEL_BRANCH_ID || "main";
     gelClient = await getBranchClient(branchId);
     
     // Test connection
