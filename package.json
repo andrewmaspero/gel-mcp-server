@@ -1,0 +1,27 @@
+{
+  "name": "mcp-quickstart-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "weather": "./build/index.js"
+  },
+  "scripts": {
+    "build": "node -e \"const fs = require('fs-extra'); const path = require('path'); const srcDir = './src/edgeql-js'; const dbDir = './dbschema/edgeql-js'; try { if (fs.existsSync(dbDir)) { fs.ensureDirSync(path.dirname(srcDir)); fs.copySync(dbDir, srcDir, {overwrite: true}); console.log('Successfully copied edgeql-js files'); } else { console.warn('Warning: dbschema/edgeql-js directory not found, skipping copy step'); } } catch(err) { console.error('Error during copy:', err); process.exit(1); }\" && tsc -p tsconfig.build.json && node -e \"const fs = require('fs'); const indexPath = './build/index.js'; try { if (fs.existsSync(indexPath)) { fs.chmodSync(indexPath, '755'); console.log('Successfully made index.js executable'); } else { console.warn('Warning: build/index.js not found, cannot make executable'); } } catch(err) { console.error('Error setting permissions:', err); }\""
+  },
+  "files": [
+    "build"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "fs-extra": "^11.2.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.4.0",
+    "gel": "^2.0.0"
+  }
+}
