@@ -76,9 +76,9 @@ SELECT Product { name, price } FILTER .price > 100;
 ```
 
 ### execute-typescript
-Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. 
+Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. It's a good idea tell the LLM agent to follow the instructions provided inside the Tool before letting it play with this one. 
 
-Note: Currently only returns one console.log for some reason so don't get too crazy with it, but it has the instructions inside the tool so your LLM agent shouldn't stumble over this. 
+Note: Currently only returns one console.log for some reason and can crash the server, but it has the instructions inside the tool so your LLM agent shouldn't stumble over this. If it does miss the instructions, you might have to refresh the crashed server in Cursor MCP settings/restart the server if not using Cursor. Then remind it to follow the instructions provided with the tool. 
 
 **Best practices:**
 - Use `await gelClient.query()` with console.log to display results
