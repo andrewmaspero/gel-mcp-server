@@ -61,11 +61,13 @@ The Gel Database MCP Server provides the following tools:
 This helps your LLM agent learn and understand your database structure without having to manually inspect the code. The agent can discover available entity types, their properties, relationships, and constraints to generate more accurate queries.
 
 **When to use:** When your agent needs to understand the structure of a database entity before querying it.
+![image](https://github.com/user-attachments/assets/e48b0da7-cd95-4416-820a-2a5c870c8e73)
 
 ### validate-query
 This helps your LLM agent verify raw EdgeQL query syntax without executing it, allowing safe validation of generated queries before they're run against your database.
 
 **When to use:** During query development to check syntax without risking execution side effects.
+![image](https://github.com/user-attachments/assets/1d54c8a5-6f5c-4f7c-904c-93f664e23718)
 
 ### execute-edgeql
 This helps your LLM agent directly interact with your database by running raw EdgeQL queries, retrieving data, and performing operations based on your instructions. Your LLM can generate EdgeQL queries and execute them autonomously.
@@ -74,11 +76,14 @@ This helps your LLM agent directly interact with your database by running raw Ed
 ```edgeql
 SELECT Product { name, price } FILTER .price > 100;
 ```
+![image](https://github.com/user-attachments/assets/79bbabab-aa3e-42e8-bd9f-92ba03cd18c0)
+
 
 ### execute-typescript
 Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. It's a good idea tell the LLM agent to follow the instructions provided inside the Tool before letting it play with this one. 
 
 Note: Currently only returns one console.log for some reason and can crash the server, but it has the instructions inside the tool so your LLM agent shouldn't stumble over this. If it does miss the instructions, you might have to refresh the crashed server in Cursor MCP settings/restart the server if not using Cursor. Then remind it to follow the instructions provided with the tool. 
+![image](https://github.com/user-attachments/assets/aed79dc8-d2ba-45d5-830b-1d73c04a5614)
 
 **Best practices:**
 - Use `await gelClient.query()` with console.log to display results
