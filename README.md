@@ -29,6 +29,7 @@ npx @gel/generate edgeql-js
 
 # 5. Update connection settings
 # Edit src/index_gel.ts lines 19-25 with your database, host, port, user, password
+# Edit src/index_gel.ts line 37 with your branch name
 
 # 6. Build the project
 yarn build
