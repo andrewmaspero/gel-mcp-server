@@ -11,7 +11,7 @@ Note: Query generation is not included since LLMs can write more flexible querie
 
 ```bash
 # 1. Install dependencies
-npm install
+yarn install
 
 # 2. Copy your dbschema folder into the project if you have one already 
 # cp -r /path/to/your/dbschema ./
@@ -31,7 +31,7 @@ npx @gel/generate edgeql-js
 # Edit src/index_gel.ts lines 19-25 with your database, host, port, user, password
 
 # 6. Build the project
-npm run build
+yarn build
 
 # 7. (optional) Test the server runs without errors
 node build/index.js
