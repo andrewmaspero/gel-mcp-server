@@ -21,6 +21,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "@babel/runtime": "^7.26.9",
     "@modelcontextprotocol/sdk": "^1.4.0",
     "gel": "^2.0.0"
   }
