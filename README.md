@@ -40,7 +40,11 @@ node build/index.js
 # 7.1 (if you have errors) Test server with a UI that provides more clear error logs using: 
 npx @modelcontextprotocol/inspector node build/index.js
 
-
+# 8. (Recommended) Include the gel_llm.txt documentation file
+# Download the Gel documentation file and place it in your project root
+# This allows both the search tool and direct file access for your LLM agent
+# curl -o gel_llm.txt https://raw.githubusercontent.com/yourorg/gel-docs/main/gel_llm.txt
+# Note: Replace the URL with the actual source of your gel_llm.txt file
 ```
 # Connect MCP Server in Cursor
 1. Click on the gear icon on the top right > MCP > +Add a new server
@@ -78,11 +82,30 @@ SELECT Product { name, price } FILTER .price > 100;
 ```
 ![image](https://github.com/user-attachments/assets/79bbabab-aa3e-42e8-bd9f-92ba03cd18c0)
 
+### search-gel-docs
+This tool allows your LLM agent to search through the Gel documentation to find relevant information about EdgeQL syntax, features, or examples. It returns comprehensive results with context to help the agent better understand Gel database concepts.
+
+**When to use:** When your agent needs to learn about specific Gel/EdgeQL features, understand syntax, or find examples for implementing database operations.
+
+**Example:**
+```
+search_term: "for loop"
+context_lines: 10  # Optional: Number of context lines to show (default: 5)
+match_all_terms: true  # Optional: Require all terms to match (default: false)
+```
+
+**Note on Documentation Hybrid Approach:** For optimal results, we recommend both:
+1. Including the `gel_llm.txt` file in your project root (for direct file access)
+2. Using the search-gel-docs tool for targeted queries
+
+This hybrid approach gives your LLM agent the flexibility to search for specific terms while also accessing the complete documentation when needed for broader context.
 
 ### execute-typescript
-Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. It's a good idea tell the LLM agent to follow the instructions provided inside the Tool before letting it play with this one. 
+Similar to execute-edgeql but can use this for testing and running Typescript Gel queries made with the query builder syntax. 
 
-Note: Currently only returns one console.log for some reason and can crash the server, but it has the instructions inside the tool so your LLM agent shouldn't stumble over this. If it does miss the instructions, you might have to refresh the crashed server in Cursor MCP settings/restart the server if not using Cursor. Then remind it to follow the instructions provided with the tool. 
+Instructions are included in the tool, but still a good idea to ask the agent what instructions it has so it loads them up in context. This makes sure it doesn't skip them. 
+
+Note: General JavaScript syntax errors can crash the server, so if the connection is appearing as closed you will have to refresh the crashed server in Cursor MCP settings or restart the server. 
 
 **Tell the LLM these are the Best practices:**
 - Use `await gelClient.query()` with console.log to display results
