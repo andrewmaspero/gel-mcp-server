@@ -6,7 +6,12 @@
     "weather": "./build/index.js"
   },
   "scripts": {
-    "build": "node -e \"const fs = require('fs-extra'); const path = require('path'); const srcDir = './src/edgeql-js'; const dbDir = './dbschema/edgeql-js'; try { if (fs.existsSync(dbDir)) { fs.ensureDirSync(path.dirname(srcDir)); fs.copySync(dbDir, srcDir, {overwrite: true}); console.log('Successfully copied edgeql-js files'); } else { console.warn('Warning: dbschema/edgeql-js directory not found, skipping copy step'); } } catch(err) { console.error('Error during copy:', err); process.exit(1); }\" && tsc -p tsconfig.build.json && node -e \"const fs = require('fs'); const indexPath = './build/index.js'; try { if (fs.existsSync(indexPath)) { fs.chmodSync(indexPath, '755'); console.log('Successfully made index.js executable'); } else { console.warn('Warning: build/index.js not found, cannot make executable'); } } catch(err) { console.error('Error setting permissions:', err); }\"",
+    "prebuild": "node scripts/auto-generate-schemas.js",
+    "build": "tsc -p tsconfig.build.json && node -e \"const fs = require('fs'); const indexPath = './build/index.js'; try { if (fs.existsSync(indexPath)) { fs.chmodSync(indexPath, '755'); console.log('Successfully made index.js executable'); } else { console.warn('Warning: build/index.js not found, cannot make executable'); } } catch(err) { console.error('Error setting permissions:', err); }\"",
+    "generate-schemas": "node scripts/auto-generate-schemas.js",
+    "start": "npx tsx src/index.ts",
+    "start:stdio": "npx tsx src/index.ts",
+    "start:http": "npx tsx src/http.ts",
     "test": "jest"
   },
   "files": [
@@ -17,16 +22,22 @@
   "license": "MIT",
   "description": "",
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.7",
     "fs-extra": "^11.2.0",
-    "typescript": "^5.7.2",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.0",
-    "@types/jest": "^29.5.0"
+    "tsx": "^4.7.1",
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "@babel/runtime": "^7.26.9",
     "@modelcontextprotocol/sdk": "^1.4.0",
-    "gel": "^2.0.0"
+    "fastify": "^5.4.0",
+    "fastify-type-provider-zod": "^5.0.1",
+    "fuse.js": "^7.1.0",
+    "gel": "^2.0.0",
+    "zod": "^3.25.67"
   }
 }

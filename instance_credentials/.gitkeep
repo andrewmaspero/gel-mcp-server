@@ -1,0 +1,7 @@
+# This file ensures the instance_credentials/ directory is tracked by Git
+# while keeping all .json credential files ignored for security.
+#
+# To add your database credentials:
+# 1. Use: gel -I your_instance_name instance credentials --json --insecure-dsn > instance_credentials/your_instance_name.json
+# 2. Run: npm run generate-schemas
+# 3. Build: npm run build 

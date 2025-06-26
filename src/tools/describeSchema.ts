@@ -1,18 +1,23 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getGelClient } from '../database.js';
+import { getDatabaseClient } from '../database.js';
 
 export function registerDescribeSchema(server: McpServer) {
-  server.tool(
+  server.registerTool(
     'describe-schema',
-    'Get schema information for a specific type',
     {
-      typeName: z.string().describe('Name of the type to describe'),
+      title: 'Describe Schema Type',
+      description: 'Get schema information for a specific type. Uses the default connection if instance/branch are not provided.',
+      inputSchema: {
+        typeName: z.string(),
+        instance: z.string().optional(),
+        branch: z.string().optional(),
+      }
     },
     async (args) => {
-      const gelClient = getGelClient();
+      const gelClient = getDatabaseClient({ instance: args.instance, branch: args.branch });
       if (!gelClient) {
-        return { content: [{ type: 'text', text: 'Database client is not initialized.' }] };
+        return { content: [{ type: 'text', text: 'Database client could not be initialized.' }] };
       }
       const query = `
         WITH module schema

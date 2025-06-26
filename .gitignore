@@ -6,3 +6,7 @@ node_modules/
 src/edgeql-js/
 .yarn/
 .pnp.*
+.history
+
+# Credentials - NEVER commit these!
+instance_credentials/*.json
