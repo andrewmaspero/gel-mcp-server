@@ -53,7 +53,7 @@ async function main() {
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   server.addHook('onClose', async () => {
-    console.log('Shutting down server...');
+    console.error('Shutting down server...');
     await closeAllConnections();
     await transport.close();
   });

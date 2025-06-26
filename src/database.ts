@@ -148,7 +148,7 @@ export async function initGelClient(): Promise<boolean> {
     // Initialize the default client using the hardcoded default instance
     defaultClient = getDatabaseClient({ instance: 'afca_intelligence' });
     await defaultClient.query('SELECT "Gel MCP Server connection test"');
-    console.log(`Gel database connection successful to instance: afca_intelligence`);
+    console.error(`Gel database connection successful to instance: afca_intelligence`);
     return true;
   } catch (err) {
     console.error('Error connecting to Gel database:', err);

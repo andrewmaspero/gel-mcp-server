@@ -10,7 +10,7 @@ async function main() {
   console.error('Gel MCP Server running on stdio');
 
   const shutdown = async () => {
-    console.log('Shutting down server...');
+    console.error('Shutting down server...');
     await closeAllConnections();
     await transport.close();
     process.exit(0);
