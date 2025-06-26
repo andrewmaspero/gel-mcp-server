@@ -27,9 +27,12 @@ npx gel project init
 npx @gel/generate edgeql-js
 # Note: Re-run this command after any schema changes
 
-# 5. Update connection settings
-# Edit src/index_gel.ts lines 19-25 with your database, host, port, user, password
-# Edit src/index_gel.ts line 37 with your branch name
+# 5. Set database connection via environment variables
+export GEL_DB_HOST=localhost
+export GEL_DB_PORT=10700
+export GEL_DB_USER=edgedb
+export GEL_DB_PASSWORD=secret
+export GEL_BRANCH_ID=mybranch
 
 # 6. Build the project
 yarn build
@@ -128,6 +131,15 @@ console.log(await gelClient.query(`
 **When to use:** For complex queries that require programmatic logic or when you need to process query results with JavaScript.
 
 ![image](https://github.com/user-attachments/assets/aed79dc8-d2ba-45d5-830b-1d73c04a5614)
+
+## Environment Variables
+Set GEL_DB_HOST, GEL_DB_PORT, GEL_DB_USER, GEL_DB_PASSWORD, and GEL_BRANCH_ID to control which Gel instance is used. These can be configured per instance and the server maintains a client registry.
+
+## Security Disclaimer
+The `execute-typescript` tool runs code inside a Node.js VM. This is inherently risky; never expose the server to untrusted users.
+
+## Schema Updates
+Use the `refresh-schema` tool or run `npx gel generate edgeql-js` whenever the JAL schema changes.
 
 ## Learn More
 
