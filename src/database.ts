@@ -6,19 +6,73 @@ import { createLogger } from "./logger.js";
 const logger = createLogger("database");
 
 export function findProjectRoot(): string {
-	let currentDir = process.cwd();
+	// First, try to find the project root based on the current module location
+	// Use __dirname as fallback for CommonJS compatibility
+	let currentDir = __dirname;
 	const root = path.parse(currentDir).root;
 
+	// Look for our specific project markers (package.json with our project name or specific files)
 	while (currentDir !== root) {
 		const packageJsonPath = path.join(currentDir, "package.json");
+		const srcPath = path.join(currentDir, "src");
+		const instanceCredentialsPath = path.join(
+			currentDir,
+			"instance_credentials",
+		);
+
 		if (fs.existsSync(packageJsonPath)) {
-			return currentDir;
+			try {
+				const packageJson = JSON.parse(
+					fs.readFileSync(packageJsonPath, "utf8"),
+				);
+				// Check if this is our specific project
+				if (
+					packageJson.name === "mcp-quickstart-ts" ||
+					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
+				) {
+					return currentDir;
+				}
+			} catch (_error) {
+				// Continue searching if package.json is invalid
+			}
+		}
+		currentDir = path.dirname(currentDir);
+	}
+
+	// Fallback: try from process.cwd()
+	currentDir = process.cwd();
+	while (currentDir !== root) {
+		const packageJsonPath = path.join(currentDir, "package.json");
+		const srcPath = path.join(currentDir, "src");
+		const instanceCredentialsPath = path.join(
+			currentDir,
+			"instance_credentials",
+		);
+
+		if (fs.existsSync(packageJsonPath)) {
+			try {
+				const packageJson = JSON.parse(
+					fs.readFileSync(packageJsonPath, "utf8"),
+				);
+				if (
+					packageJson.name === "mcp-quickstart-ts" ||
+					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
+				) {
+					return currentDir;
+				}
+			} catch (_error) {
+				// Continue searching
+			}
 		}
 		currentDir = path.dirname(currentDir);
 	}
 
 	logger.warn(
-		"Could not find project root with package.json, falling back to process.cwd()",
+		"Could not find project root with our specific markers, falling back to process.cwd()",
+		{
+			cwd: process.cwd(),
+			moduleDir: __dirname,
+		},
 	);
 	return process.cwd();
 }
@@ -54,10 +108,15 @@ export function getDatabaseClient(options: SessionOptions = {}) {
 		return null;
 	}
 
+	const credentialsFile = path.join(
+		findProjectRoot(),
+		"instance_credentials",
+		`${instance}.json`,
+	);
+
 	return createClient({
-		instanceName: instance,
+		credentialsFile,
 		branch: branch || "main",
-		credentials: path.join(findProjectRoot(), "instance_credentials"),
 	});
 }
 
@@ -111,10 +170,15 @@ export async function initGelClient() {
 			return;
 		}
 
+		const credentialsFile = path.join(
+			findProjectRoot(),
+			"instance_credentials",
+			`${instanceName}.json`,
+		);
+
 		const client = createClient({
-			instanceName,
+			credentialsFile,
 			branch,
-			credentials: path.join(findProjectRoot(), "instance_credentials"),
 		});
 		gelClient = client;
 		connections.push(client);

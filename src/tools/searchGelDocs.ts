@@ -3,6 +3,7 @@ import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import Fuse from "fuse.js";
 import { z } from "zod";
+import { findProjectRoot } from "../database.js";
 
 export function escapeRegExp(text: string) {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -22,14 +23,13 @@ export function registerSearchDocs(server: McpServer) {
 			},
 		},
 		async (args) => {
-			// Try to find the project root directory
-			const projectRoot = process.env.PWD || process.cwd();
+			// Use the project root finder
+			const projectRoot = findProjectRoot();
 			const possiblePaths = [
 				path.join(projectRoot, "gel_llm.txt"),
 				path.join(__dirname, "..", "..", "gel_llm.txt"), // from build/tools to project root
 				path.join(process.cwd(), "gel_llm.txt"),
 				"./gel_llm.txt",
-				"/Users/andreamaspero/Projects/personal/gel-mcp-server/gel_llm.txt", // absolute fallback
 			];
 
 			let docFilePath: string | null = null;
@@ -44,7 +44,7 @@ export function registerSearchDocs(server: McpServer) {
 				return {
 					content: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: `Documentation file not found. Searched paths: ${possiblePaths.join(", ")}`,
 						},
 					],
@@ -80,10 +80,10 @@ export function registerSearchDocs(server: McpServer) {
 				// Use Fuse.js for fuzzy search
 				const fuse = new Fuse(chunks, {
 					keys: ["content"],
-					threshold: 0.3, // Lower threshold = more strict matching
+					threshold: 0.6, // Higher threshold = more lenient matching
 					includeScore: true,
 					includeMatches: true,
-					minMatchCharLength: 3,
+					minMatchCharLength: 2,
 				});
 
 				const results = fuse.search(args.search_term);
@@ -92,7 +92,7 @@ export function registerSearchDocs(server: McpServer) {
 					return {
 						content: [
 							{
-								type: "text",
+								type: "text" as const,
 								text: `No matches found for "${args.search_term}".`,
 							},
 						],
@@ -120,12 +120,12 @@ export function registerSearchDocs(server: McpServer) {
 					output += "```\n\n";
 				}
 
-				return { content: [{ type: "text", text: output }] };
+				return { content: [{ type: "text" as const, text: output }] };
 			} catch (error: unknown) {
 				return {
 					content: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: `Error searching documentation: ${error instanceof Error ? error.message : String(error)}`,
 						},
 					],

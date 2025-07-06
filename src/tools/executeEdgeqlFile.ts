@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDatabaseClient } from "../database.js";
+import { findProjectRoot, getDatabaseClient } from "../database.js";
 import { createLogger } from "../logger.js";
 import { validateEdgeQLQuery } from "../validation.js";
 
@@ -14,14 +14,21 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 		{
 			title: "Execute EdgeQL Query from File",
 			description:
-				"Executes an EdgeQL query from a .edgeql file with optional parameters. " +
+				"Executes an EdgeQL query from a .edgeql file with optional parameters and data. " +
 				"This is useful for complex queries that are too long to include inline. " +
-				"Parameters can be provided as JSON object or individual arguments.",
+				"Parameters can be provided as JSON object or individual arguments. " +
+				"Data can be loaded from a JSON file and made available as $data parameter.",
 			inputSchema: {
 				file_path: z
 					.string()
 					.describe(
 						"Path to the .edgeql file (relative to project root or absolute)",
+					),
+				data_file: z
+					.string()
+					.optional()
+					.describe(
+						"Path to a JSON file containing data to inject as $data parameter (relative to project root or absolute)",
 					),
 				args: z
 					.record(z.string(), z.any())
@@ -37,11 +44,11 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 		},
 		async (args) => {
 			try {
-				// Resolve file path
+				// Resolve file path - use project root for relative paths
 				let filePath = args.file_path;
 				if (!path.isAbsolute(filePath)) {
 					// If relative path, resolve from project root
-					const projectRoot = process.cwd();
+					const projectRoot = findProjectRoot();
 					filePath = path.resolve(projectRoot, filePath);
 				}
 
@@ -103,6 +110,63 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 					queryArgs = args.args;
 				}
 
+				// Handle data file if provided
+				if (args.data_file) {
+					let dataFilePath = args.data_file;
+					if (!path.isAbsolute(dataFilePath)) {
+						const projectRoot = findProjectRoot();
+						dataFilePath = path.resolve(projectRoot, dataFilePath);
+					}
+
+					// Check if data file exists
+					if (!fs.existsSync(dataFilePath)) {
+						return {
+							content: [
+								{
+									type: "text" as const,
+									text: `❌ Data file not found: ${dataFilePath}`,
+								},
+							],
+						};
+					}
+
+					// Check data file extension
+					if (!dataFilePath.endsWith(".json")) {
+						return {
+							content: [
+								{
+									type: "text" as const,
+									text: `❌ Data file must have .json extension. Got: ${path.extname(dataFilePath)}`,
+								},
+							],
+						};
+					}
+
+					try {
+						const dataContent = fs.readFileSync(dataFilePath, "utf8");
+						const jsonData = JSON.parse(dataContent);
+
+						// Inject data as $data parameter
+						queryArgs.data = jsonData;
+
+						logger.info("Loaded data file", {
+							dataFile: dataFilePath,
+							dataSize: JSON.stringify(jsonData).length,
+							dataType: Array.isArray(jsonData) ? "array" : typeof jsonData,
+							itemCount: Array.isArray(jsonData) ? jsonData.length : undefined,
+						});
+					} catch (dataError) {
+						return {
+							content: [
+								{
+									type: "text" as const,
+									text: `❌ Error reading data file: ${dataError instanceof Error ? dataError.message : String(dataError)}`,
+								},
+							],
+						};
+					}
+				}
+
 				// Validate the query
 				try {
 					validateEdgeQLQuery(queryContent);
@@ -139,6 +203,7 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 					file: filePath,
 					hasArgs: Object.keys(queryArgs).length > 0,
 					argKeys: Object.keys(queryArgs),
+					hasDataFile: !!args.data_file,
 				});
 
 				let result: unknown;
@@ -148,27 +213,47 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 					result = await gelClient.query(queryContent);
 				}
 
+				const outputParts = [];
+				outputParts.push(
+					`✅ Query executed successfully from: ${path.basename(filePath)}`,
+				);
+				outputParts.push(
+					`📄 File: ${path.relative(findProjectRoot(), filePath)}`,
+				);
+
+				if (args.data_file) {
+					outputParts.push(
+						`📊 Data: ${path.relative(findProjectRoot(), args.data_file)}`,
+					);
+				}
+
+				if (Object.keys(queryArgs).length > 0) {
+					outputParts.push(
+						`🔧 Parameters: ${JSON.stringify(
+							// Hide the data content in output for readability
+							Object.fromEntries(
+								Object.entries(queryArgs).map(([key, value]) =>
+									key === "data"
+										? [
+												key,
+												`<${Array.isArray(value) ? `array[${value.length}]` : typeof value}>`,
+											]
+										: [key, value],
+								),
+							),
+							null,
+							2,
+						)}`,
+					);
+				}
+
+				outputParts.push(`📊 Result:\n${JSON.stringify(result, null, 2)}`);
+
 				return {
 					content: [
 						{
 							type: "text" as const,
-							text: `✅ Query executed successfully from: ${path.basename(filePath)}`,
-						},
-						{
-							type: "text" as const,
-							text: `📄 File: ${filePath}`,
-						},
-						...(Object.keys(queryArgs).length > 0
-							? [
-									{
-										type: "text" as const,
-										text: `🔧 Parameters: ${JSON.stringify(queryArgs, null, 2)}`,
-									},
-								]
-							: []),
-						{
-							type: "text" as const,
-							text: `📊 Result:\n${JSON.stringify(result, null, 2)}`,
+							text: outputParts.join("\n\n"),
 						},
 					],
 				};
@@ -176,6 +261,7 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 				logger.error("EdgeQL file execution error:", {
 					error: error instanceof Error ? error.message : String(error),
 					file: args.file_path,
+					dataFile: args.data_file,
 				});
 
 				return {
