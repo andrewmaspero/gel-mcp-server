@@ -7,6 +7,13 @@ src/edgeql-js/
 .yarn/
 .pnp.*
 .history
+logs/
 
 # Credentials - NEVER commit these!
 instance_credentials/*.json
+
+# Configuration files (may contain sensitive data)
+gel-mcp-config.json
+
+# Keep example configuration
+!gel-mcp-config.json.example

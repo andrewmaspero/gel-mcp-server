@@ -1,0 +1,46 @@
+{
+	// Set Biome as the default formatter
+	"editor.defaultFormatter": "biomejs.biome",
+
+	// Enable format on save
+	"editor.formatOnSave": true,
+
+	// Enable organize imports on save
+	"editor.codeActionsOnSave": {
+		"source.organizeImports.biome": "explicit",
+		"quickfix.biome": "explicit"
+	},
+
+	// File-specific settings for supported languages
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[css]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[graphql]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+
+	// Disable other formatters to avoid conflicts
+	"prettier.enable": false,
+	"eslint.enable": false,
+
+	// Optional: Enable Biome's quick fixes
+	"biome.lintOnSave": true
+}

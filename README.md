@@ -80,20 +80,44 @@ A powerful and flexible Model Context Protocol (MCP) server for interacting with
     npm run build
     ```
 
-### Running the Server
+### 🏗️ Building the Project
+
+The build process is automated and includes:
+
+1. **Schema Generation**: Automatically scans `instance_credentials/` and generates TypeScript query builders
+2. **TypeScript Compilation**: Compiles all TypeScript code to JavaScript
+3. **Executable Setup**: Makes the output executable for MCP usage
+
+**Build Commands:**
+```bash
+# Full build (recommended)
+pnpm run build
+
+# Individual steps
+pnpm run generate-schemas  # Generate query builders only
+pnpm run lint             # Check code quality
+pnpm run format           # Format code
+```
+
+**Build Output:**
+- `build/` directory contains compiled JavaScript
+- `src/edgeql-js/` contains generated query builders
+- `build/index.js` is the main executable
+
+### 🚀 Running the Server
 
 1.  **Standard I/O (stdio) Mode (Default)**:
     Ideal for local development and IDE integration:
     ```bash
-    npm run start:stdio
+    pnpm run start:stdio
     # or simply:
-    npm start
+    pnpm start
     ```
 
 2.  **HTTP Mode**:
     Runs as a standalone Fastify web server on port 3000:
     ```bash
-    npm run start:http
+    pnpm run start:http
     ```
 
 ---
@@ -285,10 +309,49 @@ Optional environment variables for default connection settings:
 
 ### Execute TypeScript Tool
 
-The `execute-typescript` tool runs code in a Node.js VM. **This is inherently risky**:
-- Never expose the server to untrusted users
-- Only use in secure, controlled environments
-- Consider disabling this tool in production
+The `execute-typescript` tool executes code in a sandboxed environment using `isolated-vm` when available. **While much safer than alternatives, code execution always carries some risk**:
+
+- **Secure Mode**: When `isolated-vm` is available, code runs in a proper sandboxed V8 isolate with:
+  - **Strong Isolation**: Separate V8 isolate with no access to main process
+  - **Memory limits** (configurable, default 128MB)
+  - **Execution timeouts** (configurable, default 30 seconds)
+  - **No Node.js APIs**: Cannot access file system, network, or system commands
+  - **No Global Access**: Cannot access `process`, `global`, or application state
+  - **Resource Controls**: CPU and memory usage strictly limited
+  - **Only Safe APIs**: Access limited to provided `gelClient.query()` method and safe console
+
+- **Security Level**: `isolated-vm` provides **enterprise-grade sandboxing** similar to browser JavaScript execution. It's the same technology used by:
+  - Cloudflare Workers
+  - Deno Deploy  
+  - Various serverless platforms
+
+- **Fallback Mode**: When `isolated-vm` is not available:
+  - Uses unsafe `Function` constructor (equivalent to `eval()`)
+  - **DISABLED in production** for security
+  - Only available in development environments
+
+- **Risk Assessment**:
+  - ✅ **Very Low Risk**: With `isolated-vm` in normal circumstances
+  - ⚠️ **Theoretical Risks**: V8 engine vulnerabilities, timing attacks
+  - 🔒 **Industry Standard**: Same isolation used by major cloud providers
+  - 🛡️ **Defense in Depth**: Multiple layers of protection (validation + sandboxing + limits)
+
+- **Security Best Practices**:
+  - Monitor execution logs for suspicious activity
+  - Use configuration to restrict code length and patterns
+  - Consider disabling entirely if not needed
+  - Keep `isolated-vm` and Node.js updated
+
+- **Configuration**: TypeScript execution can be disabled via:
+  ```json
+  {
+    "security": {
+      "executeTypescript": {
+        "enabled": false
+      }
+    }
+  }
+  ```
 
 ### Credential Files
 
@@ -402,3 +465,295 @@ If you encounter issues:
 2. Check the credential files format
 3. Verify database connectivity with `gel instance list`
 4. Review the server logs for detailed error messages
+
+## ⚙️ Configuration
+
+The server supports comprehensive configuration via:
+1. Configuration file: `gel-mcp-config.json`
+2. Environment variables (prefixed with `GEL_`)
+3. Built-in defaults
+
+### Configuration File Example
+
+Create `gel-mcp-config.json` in your project root:
+
+```json
+{
+  "server": {
+    "port": 3000,
+    "host": "localhost",
+    "timeout": 30000
+  },
+  "database": {
+    "defaultInstance": "your_instance_name",
+    "defaultBranch": "main",
+    "connectionTimeout": 10000,
+    "queryTimeout": 30000
+  },
+  "schemaWatcher": {
+    "enabled": true,
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "security": {
+    "executeTypescript": {
+      "enabled": true,
+      "timeout": 30000,
+      "memoryLimit": 128,
+      "maxCodeLength": 10000
+    },
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 60000,
+      "maxRequests": 100,
+      "executeToolsLimit": 10
+    }
+  }
+}
+```
+
+### Environment Variables
+
+- `GEL_MCP_PORT`: Server port (default: 3000)
+- `GEL_MCP_HOST`: Server host (default: localhost)
+- `GEL_DEFAULT_INSTANCE`: Default database instance
+- `GEL_DEFAULT_BRANCH`: Default branch (default: main)
+- `GEL_EXECUTE_TYPESCRIPT_ENABLED`: Enable/disable TypeScript execution (true/false)
+- `GEL_SCHEMA_WATCHER_ENABLED`: Enable/disable schema watcher (true/false)
+- `GEL_RATE_LIMIT_ENABLED`: Enable/disable rate limiting (true/false)
+- `LOG_LEVEL`: Logging level (error, warn, info, debug)
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions to the Gel MCP Server! This section will help you get started with development and contributing to the project.
+
+### 🚀 Quick Start for Contributors
+
+1. **Fork and Clone**
+   ```bash
+   git clone https://github.com/your-username/gel-mcp-server.git
+   cd gel-mcp-server
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   pnpm install
+   ```
+
+3. **Set Up Development Environment**
+   ```bash
+   # Copy example configuration
+   cp gel-mcp-config.json.example gel-mcp-config.json
+   
+   # Edit configuration for your environment
+   # Add your instance credentials to instance_credentials/
+   ```
+
+4. **Build the Project**
+   ```bash
+   pnpm run build
+   ```
+
+### 🔧 Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `pnpm run build` | Full build (schema generation + TypeScript compilation) |
+| `pnpm run start` | Start server in stdio mode |
+| `pnpm run start:http` | Start server in HTTP mode |
+| `pnpm run generate-schemas` | Generate EdgeQL query builders only |
+| `pnpm run lint` | Run linting checks |
+| `pnpm run format` | Format code with Biome |
+| `pnpm run test` | Run tests |
+
+### 🏗️ Build Process
+
+The build process consists of two main steps:
+
+1. **Schema Generation** (`prebuild`):
+   - Scans `instance_credentials/` for JSON files
+   - Tests database connections
+   - Generates TypeScript query builders for each instance
+   - Creates type-safe access patterns
+
+2. **TypeScript Compilation**:
+   - Compiles TypeScript to JavaScript
+   - Outputs to `build/` directory
+   - Makes `index.js` executable
+
+### 📁 Project Structure
+
+```
+gel-mcp-server/
+├── src/
+│   ├── tools/           # MCP tool implementations
+│   ├── edgeql-js/       # Generated query builders (auto-generated)
+│   ├── config.ts        # Configuration management
+│   ├── validation.ts    # Input validation & security
+│   ├── errors.ts        # Error handling system
+│   ├── database.ts      # Database connection management
+│   ├── session.ts       # Session state management
+│   ├── logger.ts        # Logging utilities
+│   ├── http.ts          # HTTP server implementation
+│   ├── app.ts           # MCP server setup
+│   └── index.ts         # Main entry point (stdio mode)
+├── scripts/
+│   └── auto-generate-schemas.js  # Schema generation script
+├── instance_credentials/    # Database credentials (gitignored)
+├── logs/                   # Log files (gitignored)
+└── build/                  # Compiled output (gitignored)
+```
+
+### 🛠️ Adding New Tools
+
+To add a new MCP tool:
+
+1. **Create Tool File**
+   ```typescript
+   // src/tools/myNewTool.ts
+   import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+   import { z } from "zod";
+   import { wrapToolFunction, createSuccessResponse } from "../errors.js";
+   
+   export function registerMyNewTool(server: McpServer) {
+     server.registerTool(
+       "my-new-tool",
+       {
+         title: "My New Tool",
+         description: "Description of what this tool does",
+         inputSchema: {
+           param1: z.string(),
+           param2: z.number().optional(),
+         },
+       },
+       wrapToolFunction(async (args) => {
+         // Your tool implementation here
+         return createSuccessResponse("Tool executed successfully", result);
+       })
+     );
+   }
+   ```
+
+2. **Register in Index**
+   ```typescript
+   // src/tools/index.ts
+   import { registerMyNewTool } from "./myNewTool.js";
+   
+   export function registerAllTools(server: McpServer) {
+     // ... existing tools
+     registerMyNewTool(server);
+   }
+   ```
+
+3. **Add Validation (if needed)**
+   ```typescript
+   // src/validation.ts - add any custom validation functions
+   ```
+
+### 🧪 Testing Guidelines
+
+- **Unit Tests**: Test individual functions and utilities
+- **Integration Tests**: Test tool functionality end-to-end
+- **Security Tests**: Validate input sanitization and security measures
+- **Manual Testing**: Test with real MCP clients (Cursor, VS Code)
+
+### 🔒 Security Considerations for Contributors
+
+When contributing, please:
+
+1. **Validate All Inputs**: Use validation functions from `src/validation.ts`
+2. **Handle Errors Properly**: Use error classes from `src/errors.ts`
+3. **Follow Rate Limiting**: Respect rate limits for execute tools
+4. **Sanitize Outputs**: Never expose sensitive information in responses
+5. **Test Security**: Verify that your changes don't introduce vulnerabilities
+
+### 📝 Code Style
+
+We use Biome for consistent code formatting and linting:
+
+- **Formatting**: `pnpm run format`
+- **Linting**: `pnpm run lint`
+- **Config**: See `biome.json`
+
+**Key Guidelines**:
+- Use TypeScript for all new code
+- Add JSDoc comments for public functions
+- Use structured logging with context
+- Follow existing error handling patterns
+- Write comprehensive input validation
+
+### 🐛 Reporting Issues
+
+When reporting issues, please include:
+
+1. **Environment Information**:
+   - Node.js version
+   - Operating system
+   - Gel CLI version
+   - MCP client (Cursor, VS Code, etc.)
+
+2. **Steps to Reproduce**:
+   - Clear, numbered steps
+   - Expected vs actual behavior
+   - Error messages and logs
+
+3. **Configuration** (sanitized):
+   - Relevant parts of `gel-mcp-config.json`
+   - Environment variables (without sensitive data)
+
+### 🔄 Pull Request Process
+
+1. **Before You Start**:
+   - Check existing issues and PRs
+   - Discuss major changes in an issue first
+   - Fork the repository
+
+2. **Development**:
+   - Create a feature branch: `git checkout -b feature/my-feature`
+   - Make your changes
+   - Add tests if applicable
+   - Run `pnpm run lint && pnpm run format`
+   - Ensure `pnpm run build` succeeds
+
+3. **Pull Request**:
+   - Write clear commit messages
+   - Update documentation if needed
+   - Fill out the PR template
+   - Link related issues
+
+4. **Review Process**:
+   - Automated checks must pass
+   - Code review by maintainers
+   - Address feedback promptly
+   - Squash commits before merge
+
+### 🎯 Areas for Contribution
+
+We welcome contributions in these areas:
+
+- **New Tools**: Additional MCP tools for database interaction
+- **Security Enhancements**: Improved validation and sandboxing
+- **Performance**: Optimization of query builders and connections
+- **Documentation**: Better examples and guides
+- **Testing**: More comprehensive test coverage
+- **Configuration**: Additional configuration options
+- **Error Handling**: Better error messages and recovery
+
+### 📚 Resources
+
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
+- [Gel (EdgeDB) Documentation](https://docs.edgedb.com/)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Biome Documentation](https://biomejs.dev/)
+
+### 💬 Getting Help
+
+- **Issues**: Use GitHub issues for bugs and feature requests
+- **Discussions**: Use GitHub discussions for questions and ideas
+- **Documentation**: Check the README and inline code comments
+
+Thank you for contributing to the Gel MCP Server! 🙏
+
+---

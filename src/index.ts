@@ -1,26 +1,31 @@
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createApp } from './app.js';
-import { initGelClient, closeAllConnections } from './database.js';
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createApp } from "./app.js";
+import { createLogger } from "./logger.js";
 
-async function main() {
-  const server = createApp();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  await initGelClient();
-  console.error('Gel MCP Server running on stdio');
+const logger = createLogger("main");
 
-  const shutdown = async () => {
-    console.error('Shutting down server...');
-    await closeAllConnections();
-    await transport.close();
-    process.exit(0);
-  };
+export async function main() {
+	const server = createApp();
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+	const transport = new StdioServerTransport();
+	logger.info("Gel MCP Server running on stdio");
+
+	process.on("SIGTERM", () => {
+		logger.info("Shutting down server...");
+		transport.close();
+		process.exit(0);
+	});
+
+	process.on("SIGINT", () => {
+		logger.info("Shutting down server...");
+		transport.close();
+		process.exit(0);
+	});
+
+	await server.connect(transport);
 }
 
 main().catch((err) => {
-  console.error('Fatal error in main():', err);
-  process.exit(1);
+	logger.error("Fatal error in main():", err);
+	process.exit(1);
 });
