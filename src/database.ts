@@ -7,75 +7,66 @@ import { getDefaultConnection } from "./session.js";
 const logger = createLogger("database");
 
 export function findProjectRoot(): string {
-	// First, try to find the project root based on the current module location
-	// Use __dirname as fallback for CommonJS compatibility
-	let currentDir = __dirname;
-	const root = path.parse(currentDir).root;
+    // Prefer explicit override
+    const override = process.env.GEL_PROJECT_ROOT;
+    if (override && fs.existsSync(path.join(override, "package.json"))) {
+        return override;
+    }
 
-	// Look for our specific project markers (package.json with our project name or specific files)
-	while (currentDir !== root) {
-		const packageJsonPath = path.join(currentDir, "package.json");
-		const srcPath = path.join(currentDir, "src");
-		const instanceCredentialsPath = path.join(
-			currentDir,
-			"instance_credentials",
-		);
+    // Walk up from cwd to find nearest package.json that contains our project or has src/ + instance_credentials/
+    const root = path.parse(process.cwd()).root;
+    let currentDir = process.cwd();
+    while (true) {
+        const packageJsonPath = path.join(currentDir, "package.json");
+        const srcPath = path.join(currentDir, "src");
+        const instanceCredentialsPath = path.join(currentDir, "instance_credentials");
 
-		if (fs.existsSync(packageJsonPath)) {
-			try {
-				const packageJson = JSON.parse(
-					fs.readFileSync(packageJsonPath, "utf8"),
-				);
-				// Check if this is our specific project
-				if (
-					packageJson.name === "gel-mcp-server" ||
-					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
-				) {
-					return currentDir;
-				}
-			} catch (_error) {
-				// Continue searching if package.json is invalid
-			}
-		}
-		currentDir = path.dirname(currentDir);
-	}
+        if (fs.existsSync(packageJsonPath)) {
+            try {
+                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+                if (
+                    packageJson.name === "gel-mcp-server" ||
+                    (fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
+                )
+                    return currentDir;
+            } catch {
+                // ignore parse errors and continue
+            }
+        }
+        const parent = path.dirname(currentDir);
+        if (parent === currentDir || currentDir === root) break;
+        currentDir = parent;
+    }
 
-	// Fallback: try from process.cwd()
-	currentDir = process.cwd();
-	while (currentDir !== root) {
-		const packageJsonPath = path.join(currentDir, "package.json");
-		const srcPath = path.join(currentDir, "src");
-		const instanceCredentialsPath = path.join(
-			currentDir,
-			"instance_credentials",
-		);
+    // Fallback to module dir walk
+    currentDir = __dirname;
+    const moduleRoot = path.parse(currentDir).root;
+    while (true) {
+        const packageJsonPath = path.join(currentDir, "package.json");
+        const srcPath = path.join(currentDir, "src");
+        const instanceCredentialsPath = path.join(currentDir, "instance_credentials");
+        if (fs.existsSync(packageJsonPath)) {
+            try {
+                const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+                if (
+                    packageJson.name === "gel-mcp-server" ||
+                    (fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
+                )
+                    return currentDir;
+            } catch {
+                // ignore
+            }
+        }
+        const parent = path.dirname(currentDir);
+        if (parent === currentDir || currentDir === moduleRoot) break;
+        currentDir = parent;
+    }
 
-		if (fs.existsSync(packageJsonPath)) {
-			try {
-				const packageJson = JSON.parse(
-					fs.readFileSync(packageJsonPath, "utf8"),
-				);
-				if (
-					packageJson.name === "gel-mcp-server" ||
-					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
-				) {
-					return currentDir;
-				}
-			} catch (_error) {
-				// Continue searching
-			}
-		}
-		currentDir = path.dirname(currentDir);
-	}
-
-	logger.warn(
-		"Could not find project root with our specific markers, falling back to process.cwd()",
-		{
-			cwd: process.cwd(),
-			moduleDir: __dirname,
-		},
-	);
-	return process.cwd();
+    logger.warn("Could not find project root, falling back to process.cwd()", {
+        cwd: process.cwd(),
+        moduleDir: __dirname,
+    });
+    return process.cwd();
 }
 
 let gelClient: ReturnType<typeof createClient> | null = null;

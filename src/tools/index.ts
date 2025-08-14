@@ -13,6 +13,7 @@ import { registerListInstances } from "./list-instances.js";
 import { registerListSchemaTypes } from "./list-schema-types.js";
 import { registerPrompts } from "./prompts.js";
 import { registerRefreshSchema } from "./refreshSchema.js";
+import { registerSchema } from "./schema.js";
 import { registerSearchDocs } from "./searchGelDocs.js";
 import { registerSessionManagement } from "./session-management.js";
 import { registerSwitchBranch } from "./switch-branch.js";
@@ -76,8 +77,10 @@ export function registerAllTools(server: McpServer) {
 	registerListBranches(server);
 	registerSwitchBranch(server);
 	registerListCredentials(server);
+	// Consolidated schema tool supersedes get-schema & list-schema-types but keep both registered for compatibility
 	registerGetSchema(server);
 	registerListSchemaTypes(server);
+	registerSchema(server);
 	registerSessionManagement(server);
 	registerPrompts(server);
 

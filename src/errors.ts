@@ -311,6 +311,38 @@ export function createSuccessResponse(
 	return { content };
 }
 
+// Stronger response types for tools
+export type ToolResponseSuccess = {
+    type: "success";
+    message: string;
+    data?: unknown;
+};
+
+export type ToolResponseWarn = {
+    type: "warn";
+    message: string;
+    data?: unknown;
+};
+
+export type ToolResponseError = {
+    type: "error";
+    message: string;
+    data?: unknown;
+};
+
+export type ToolResponseInfo = {
+    type: "info";
+    message: string;
+    data?: unknown;
+};
+
+export type ToolResponse =
+    | ToolResponseSuccess
+    | ToolResponseWarn
+    | ToolResponseError
+    | ToolResponseInfo;
+
+
 /**
  * Create a warning response
  */

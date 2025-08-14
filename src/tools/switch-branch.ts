@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { emitConnectionChanged } from "../events.js";
 import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection } from "../session.js";
 import {
@@ -62,6 +63,7 @@ export function registerSwitchBranch(server: McpServer) {
 				// Update schema watcher if this affects the current default connection
 				if (instance === session.defaultInstance) {
 					updateSchemaWatcher();
+					emitConnectionChanged({ instance, branch: args.branch });
 				}
 
 				return {

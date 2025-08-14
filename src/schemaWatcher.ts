@@ -4,6 +4,7 @@ import { getConfig } from "./config.js";
 import { findProjectRoot } from "./database.js";
 import { createLogger } from "./logger.js";
 import { getDefaultConnection } from "./session.js";
+import { onConnectionChanged } from "./events.js";
 
 const logger = createLogger("schema-watcher");
 const config = getConfig();
@@ -140,3 +141,8 @@ export function getSchemaWatcherStatus() {
 		retryCount: watcherRetryCount,
 	};
 }
+
+// React to connection change events from the bus too
+onConnectionChanged(({ instance, branch }) => {
+    startSchemaWatcher(instance, branch);
+});
