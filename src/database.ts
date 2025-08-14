@@ -5,12 +5,15 @@ import { createLogger } from "./logger.js";
 import { getDefaultConnection } from "./session.js";
 
 const logger = createLogger("database");
+let cachedProjectRoot: string | null = null;
 
 export function findProjectRoot(): string {
+	if (cachedProjectRoot) return cachedProjectRoot;
 	// Prefer explicit override
 	const override = process.env.GEL_PROJECT_ROOT;
 	if (override && fs.existsSync(path.join(override, "package.json"))) {
-		return override;
+		cachedProjectRoot = override;
+		return cachedProjectRoot;
 	}
 
 	// Walk up from cwd to find nearest package.json that contains our project or has src/ + instance_credentials/
@@ -32,8 +35,10 @@ export function findProjectRoot(): string {
 				if (
 					packageJson.name === "gel-mcp-server" ||
 					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
-				)
-					return currentDir;
+				) {
+					cachedProjectRoot = currentDir;
+					return cachedProjectRoot;
+				}
 			} catch {
 				// ignore parse errors and continue
 			}
@@ -61,8 +66,10 @@ export function findProjectRoot(): string {
 				if (
 					packageJson.name === "gel-mcp-server" ||
 					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
-				)
-					return currentDir;
+				) {
+					cachedProjectRoot = currentDir;
+					return cachedProjectRoot;
+				}
 			} catch {
 				// ignore
 			}
@@ -76,7 +83,8 @@ export function findProjectRoot(): string {
 		cwd: process.cwd(),
 		moduleDir: __dirname,
 	});
-	return process.cwd();
+	cachedProjectRoot = process.cwd();
+	return cachedProjectRoot;
 }
 
 let gelClient: ReturnType<typeof createClient> | null = null;

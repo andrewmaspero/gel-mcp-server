@@ -157,8 +157,8 @@ export function registerSchema(server: McpServer) {
 							jsonData: result,
 							textSections: [
 								"You can now validate or run a query:",
-								`@[validate-query query=\"SELECT ${args.typeName}\"]`,
-								`@[execute-edgeql query=\"SELECT ${args.typeName}\"]`,
+								`@[query action=\"validate\" query=\"SELECT ${args.typeName}\"]`,
+								`@[query action=\"run\" query=\"SELECT ${args.typeName}\"]`,
 							],
 						});
 					}

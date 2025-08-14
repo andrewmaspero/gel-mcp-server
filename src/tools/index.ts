@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getDebugInfo } from "../database.js";
+import { registerCacheTools } from "./cache.js";
 import { registerConnection } from "./connection.js";
 import { registerDocs } from "./docs.js";
-import { registerCacheTools } from "./cache.js";
 import { registerPrompts } from "./prompts.js";
 import { registerQuery } from "./query.js";
 import { registerSchema } from "./schema.js";
@@ -61,8 +61,8 @@ export function registerAllTools(server: McpServer) {
 	registerSchema(server);
 	registerQuery(server);
 	registerDocs(server);
-    registerPrompts(server);
-    registerCacheTools(server);
+	registerPrompts(server);
+	registerCacheTools(server);
 
 	// Advertise capabilities for clients that inspect during initialize
 	// Note: McpServer will expose these automatically based on handlers,
