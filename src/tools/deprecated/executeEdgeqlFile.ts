@@ -2,5 +2,3 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export function registerExecuteEdgeqlFile(_server: McpServer) {}
-
-

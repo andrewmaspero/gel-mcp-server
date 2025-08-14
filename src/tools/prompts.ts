@@ -279,4 +279,94 @@ export function registerPrompts(server: McpServer) {
 			],
 		}),
 	);
+
+	// Suggest Context7/Gel search terms from a natural goal
+	server.registerPrompt(
+		"gel-rag-suggest",
+		{
+			title: "Gel RAG Suggest (Context7 Search Terms)",
+			description:
+				"Given a natural goal, propose targeted Context7 search terms and ready-to-use calls.",
+			argsSchema: {
+				goal: z
+					.string()
+					.describe(
+						"Natural language goal, e.g., 'paginate a SELECT over Orders'",
+					),
+				intent: z
+					.enum(["query", "schema", "both"]) // optional hint to bias suggestions
+					.optional(),
+			},
+		},
+		({ goal, intent }) => {
+			const safeGoal = goal.replace(/"/g, '\\"');
+			const baseQueryTerms = [
+				"Overview",
+				"Literals",
+				"Sets",
+				"Paths",
+				"Types",
+				"Parameters",
+				"Select",
+				"Insert",
+				"Update",
+				"Delete",
+				"For",
+				"Group",
+				"With",
+				"Analyze",
+				"Path scoping",
+				"Transactions",
+			];
+			const baseSchemaTerms = [
+				"Object Types",
+				"Properties",
+				"Links",
+				"Computeds",
+				"Primitives",
+				"Indexes",
+				"Constraints",
+				"Inheritance",
+				"Aliases",
+				"Globals",
+				"Access Policies",
+				"Functions",
+				"Triggers",
+				"Mutation rewrites",
+				"Link properties",
+				"Modules",
+				"Migrations",
+				"Branches",
+				"Extensions",
+				"Annotations",
+			];
+			const pick = (arr: string[], n: number) =>
+				arr.slice(0, Math.min(n, arr.length));
+			const intentLower = (intent ?? "both").toLowerCase();
+			const topics =
+				intentLower === "query"
+					? pick(baseQueryTerms, 6)
+					: intentLower === "schema"
+						? pick(baseSchemaTerms, 6)
+						: pick(baseQueryTerms, 4).concat(pick(baseSchemaTerms, 2));
+			const suggested = `${safeGoal} — ${topics.join(", ")}`;
+			const text = [
+				"Use Context7 directly with Gel docs:",
+				"- Library id: /geldata/gel",
+				`- Search: "${suggested}"`,
+				"",
+				"If local RAG is preferred (this server):",
+				`@[docs action=\"search\" term=\"${suggested}\"]`,
+				"",
+				"Tips:",
+				"- Start broad (Overview/Types), then refine to operators/clauses.",
+				'- Cross-check examples with your live schema via @[schema action="types"] / @[schema action="describe"].',
+			].join("\n");
+			return {
+				messages: [
+					{ role: "user" as const, content: { type: "text" as const, text } },
+				],
+			};
+		},
+	);
 }
