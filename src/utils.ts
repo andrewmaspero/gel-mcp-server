@@ -1,5 +1,6 @@
 import { getAvailableInstances, getDatabaseClient } from "./database.js";
 import { getDefaultConnection, setDefaultConnection } from "./session.js";
+import { validateBranchName, validateInstanceName } from "./validation.js";
 
 /**
  * Safely stringify data that might contain malformed JSON strings
@@ -78,6 +79,18 @@ export function getClientWithDefaults(args: {
 
 	const client = getDatabaseClient({ instance, branch });
 	return { client, instance, branch, autoSelected };
+}
+
+/**
+ * Validate optional instance and branch names when provided
+ */
+export function validateConnectionArgs(args: { instance?: string; branch?: string }) {
+    if (args.instance) {
+        validateInstanceName(args.instance);
+    }
+    if (args.branch) {
+        validateBranchName(args.branch);
+    }
 }
 
 /**

@@ -21,6 +21,19 @@ A powerful and flexible Model Context Protocol (MCP) server for interacting with
 - **Type-Safe Architecture**: Built with TypeScript, Zod validation, and modern MCP SDK patterns
 - **Rich Toolset**: Comprehensive database interaction tools
 
+## Security & Validation
+
+- **Validated Inputs**: All tools that accept `instance`/`branch` validate names before use.
+- **Rate Limiting**: Enforced on execute/high-frequency tools to prevent abuse.
+- **Safe Execution**: TypeScript code runs in `isolated-vm` when available; unsafe fallback is disabled in production.
+
+## HTTP Transport
+
+The HTTP server uses Streamable HTTP transport with:
+
+- DNS rebinding protection enabled
+- Allowed hosts limited to `localhost`/`127.0.0.1` by default
+
 ---
 
 ## Getting Started
@@ -233,7 +246,7 @@ Tool Parameter > Session Default > Project Default
 - `refresh-schema`: Regenerates EdgeQL query builder files for a specific instance
 
 ### Documentation & Utilities
-- `search_gel_docs`: Searches local Gel documentation
+- `search_gel_docs`: Searches local Gel documentation (supports `match_all_terms` and `context_lines`)
 - `debug-filesystem`: Debug tool for troubleshooting file system issues
 - `prompt-code-review`: Generates code review prompts
 - `prompt-search-docs`: Generates documentation search tool calls

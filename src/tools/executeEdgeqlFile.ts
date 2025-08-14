@@ -4,7 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import JSON5 from "json5";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
-import { getClientWithDefaults, safeJsonStringify } from "../utils.js";
+import { getClientWithDefaults, safeJsonStringify, validateConnectionArgs } from "../utils.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
 
 const logger = createLogger("executeEdgeqlFile");
@@ -45,6 +45,8 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 			try {
 				// Rate limit execute
 				checkRateLimit("execute-edgeql-file", true);
+                // Validate optional instance/branch
+                validateConnectionArgs(args);
 
 				let resolvedPath: string;
 				if (path.isAbsolute(args.file_path)) {

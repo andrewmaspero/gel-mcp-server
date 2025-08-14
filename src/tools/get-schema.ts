@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
-import { getClientWithDefaults, getConnectionStatusMessage } from "../utils.js";
+import { getClientWithDefaults, getConnectionStatusMessage, validateConnectionArgs } from "../utils.js";
 import { checkRateLimit } from "../validation.js";
 
 const logger = createLogger("get-schema");
@@ -21,6 +21,7 @@ export function registerGetSchema(server: McpServer) {
 		async (args) => {
 			try {
 				checkRateLimit("get-schema");
+                validateConnectionArgs(args);
 				const { client, instance, branch, autoSelected } =
 					getClientWithDefaults(args);
 

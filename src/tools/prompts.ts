@@ -8,9 +8,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-bootstrap-connection",
 		{
-			title: "Generate Bootstrap Prompt (Set Connection)",
+			title: "Bootstrap: Establish Connection & Verify",
 			description:
-				"Generates a short system prompt that instructs the agent to establish a default instance/branch and verify connectivity before using other tools.",
+				"System prompt that instructs the agent to deterministically set a default instance/branch and verify connectivity before any other operation.",
 			inputSchema: {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
@@ -20,14 +20,15 @@ export function registerPrompts(server: McpServer) {
 			const suggestedInstance = args.instance ?? "<your_instance>";
 			const suggestedBranch = args.branch ?? "main";
 			const text = [
-				"You are operating an MCP server with Gel database tools.",
-				"Before calling any database tools:",
-				"1) If no default connection is set, call set-default-connection with instance and branch.",
-				"2) Call list-instances if you need available instance names.",
-				"3) Call list-branches if you need available branches for an instance.",
-				"4) After setting the default, call get-default-connection and then a trivial read (e.g., list-schema-types) to verify.",
-				"If any call fails, report the exact tool error and propose the next corrective action.",
-				"Preferred defaults:",
+				"Operate in a connection-first, schema-first workflow.",
+				"Before any query:",
+				"1) Call get-default-connection. If unset, call list-instances. If empty, instruct the user to add JSON credentials to 'instance_credentials/'.",
+				"2) Choose an instance deterministically (prefer provided one; otherwise pick lexicographically first).",
+				"3) Call list-branches for the chosen instance; prefer 'main' if unspecified.",
+				"4) Call set-default-connection with the chosen instance/branch.",
+				"5) Verify with get-default-connection, then run list-schema-types as a health check.",
+				"On any error, extract the message and select the next corrective tool call (e.g., set-default-connection, list-instances, list-branches), then retry once.",
+				"Preferred defaults (if ambiguous):",
 				`- instance: ${suggestedInstance}`,
 				`- branch: ${suggestedBranch}`,
 			].join("\n");
@@ -39,9 +40,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-schema-exploration",
 		{
-			title: "Generate Schema Exploration Prompt",
+			title: "Schema Exploration (List → Describe → Plan)",
 			description:
-				"Generates a prompt instructing the agent to first discover schema types and then fetch detailed type info before forming queries.",
+				"System prompt that enforces listing types and describing targets before crafting any EdgeQL.",
 			inputSchema: {},
 		},
 		async () => ({
@@ -49,11 +50,11 @@ export function registerPrompts(server: McpServer) {
 				{
 					type: "text",
 					text: [
-						"To understand the schema before writing queries:",
-						"- Call list-schema-types to get type names.",
-						"- For any type of interest, call describe-schema with typeName.",
-						"- Only after reviewing properties/links should you craft EdgeQL and call execute-edgeql.",
-						"- When executing queries, prefer parameterized args and avoid interpolating raw user strings.",
+						"Use a strict schema-first plan:",
+						"- Call list-schema-types to enumerate domain entities (strip 'default::' when showing names).",
+						"- For each candidate, call describe-schema to inspect properties (scalars) and links (relationships).",
+						"- Only then compose EdgeQL that references real fields. Avoid guessing type/field names.",
+						"- Prefer parameterized arguments over embedding user strings.",
 					].join("\n"),
 				},
 			],
@@ -64,9 +65,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-quickstart",
 		{
-			title: "Generate Quickstart Prompt (End-to-End)",
+			title: "Quickstart (Connection → Schema → Validate → Execute)",
 			description:
-				"Generates a concise, step-by-step system prompt covering connection setup, schema discovery, safe query workflow, and error recovery.",
+				"Concise, step-by-step system prompt covering connection setup, schema discovery, safe query workflow, and error recovery.",
 			inputSchema: {},
 		},
 		async () => ({
@@ -77,12 +78,12 @@ export function registerPrompts(server: McpServer) {
 						"You are using an MCP database server. Follow this workflow strictly:",
 						"",
 						"Connection:",
-						"- Call get-default-connection. If unset, call list-instances, pick one deterministically (first if no policy), then call set-default-connection.",
+						"- Call get-default-connection. If unset, call list-instances; if none, request credentials be added. Otherwise pick lexicographically first and call set-default-connection.",
 						"- Optionally call list-branches for the chosen instance; prefer 'main' if unsure.",
 						"- Verify with list-schema-types.",
 						"",
 						"Schema-first:",
-						"- Before any query, call list-schema-types. For a candidate type, call describe-schema.",
+						"- Before any query, call list-schema-types. For a candidate type, call describe-schema to confirm fields.",
 						"- Only then craft EdgeQL.",
 						"",
 						"Safe Query Workflow:",
@@ -104,9 +105,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-choose-defaults",
 		{
-			title: "Generate Prompt to Choose Defaults",
+			title: "Choose Defaults (Deterministic Instance/Branch)",
 			description:
-				"Generates a prompt guiding the agent to deterministically pick an instance and branch, including completions and tie-break rules.",
+				"Guides deterministic selection of instance/branch with simple completions and tie-break rules.",
 			inputSchema: {
 				instance: completable(z.string(), (_value) => getAvailableInstances()),
 				branch: completable(z.string(), (value) =>
@@ -118,10 +119,10 @@ export function registerPrompts(server: McpServer) {
 			const instance = args.instance || "<choose-from-list-instances>";
 			const branch = args.branch || "main";
 			const text = [
-				"Choose deterministic defaults:",
+				"Pick deterministic defaults:",
 				`- instance: ${instance} (if multiple, pick lexicographically first)`,
 				`- branch: ${branch} (prefer 'main' if unknown)`,
-				"Then call set-default-connection. Re-verify with get-default-connection and a lightweight tool (list-schema-types).",
+				"Then call set-default-connection. Re-verify with get-default-connection and list-schema-types.",
 			].join("\n");
 			return { content: [{ type: "text", text }] };
 		},
@@ -131,9 +132,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-edgeql-workflow",
 		{
-			title: "Generate EdgeQL Workflow Prompt",
+			title: "EdgeQL Workflow (Validate → Execute)",
 			description:
-				"Generates a prompt that tells the model to validate first, then execute, and present results compactly.",
+				"Prompt that enforces validation-first execution with safe argument handling and compact results.",
 			inputSchema: {
 				query: z.string().describe("EdgeQL to run"),
 			},
@@ -146,7 +147,7 @@ export function registerPrompts(server: McpServer) {
 						"Run EdgeQL safely:",
 						`- First: @[validate-query query="${args.query.replace(/"/g, '\\"')}"]`,
 						`- If valid: @[execute-edgeql query="${args.query.replace(/"/g, '\\"')}"]`,
-						"- If invalid: read the message, adjust schema/filters, and re-validate before executing.",
+						"- If invalid: read the message, adjust schema/filters/args, and re-validate before executing.",
 					].join("\n"),
 				},
 			],
@@ -157,9 +158,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-recovery-playbook",
 		{
-			title: "Generate Error Recovery Prompt",
+			title: "Recovery Playbook (Common Tool Errors)",
 			description:
-				"Generates a short playbook for how the agent should recover from common tool errors automatically.",
+				"Short, actionable playbook mapping common tool errors to corrective actions.",
 			inputSchema: {},
 		},
 		async () => ({
@@ -168,9 +169,11 @@ export function registerPrompts(server: McpServer) {
 					type: "text",
 					text: [
 						"If a tool fails:",
-						"- If 'Database client could not be initialized' ⇒ call list-instances → set-default-connection → retry.",
-						"- If 'Type not found' ⇒ call list-schema-types, correct name, then describe-schema again.",
-						"- If rate limited ⇒ back off and retry later; batch operations when possible.",
+						"- 'Database client could not be initialized' ⇒ call list-instances → set-default-connection → retry.",
+						"- 'Type not found' ⇒ call list-schema-types, correct name, then describe-schema again.",
+						"- 'Invalid params' ⇒ check required fields for the tool; re-run with corrected arguments.",
+						"- 'Resource not found' ⇒ verify URIs and re-run or adjust scope.",
+						"- Rate limited ⇒ exponential backoff and retry; batch where possible.",
 						"- Always summarize the error cause and the next tool you will call.",
 					].join("\n"),
 				},
@@ -203,9 +206,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-search-docs",
 		{
-			title: "Generate Search Documentation Tool Call",
+			title: "Search Docs (Gel LLM File)",
 			description:
-				"Generate a tool call to search the Gel documentation for a specific term.",
+				"Generates a single tool call that searches the local Gel documentation (gel_llm.txt) for a term.",
 			inputSchema: {
 				term: z.string(),
 			},
@@ -214,7 +217,7 @@ export function registerPrompts(server: McpServer) {
 			content: [
 				{
 					type: "text",
-					text: `Here is the tool call to search the documentation:\n\n@[search_gel_docs search_term="${args.term}"]`,
+					text: `Use this tool call to search the docs:\n\n@[search_gel_docs search_term="${args.term}"]`,
 				},
 			],
 		}),
@@ -224,9 +227,9 @@ export function registerPrompts(server: McpServer) {
 	server.registerTool(
 		"prompt-run-edgeql",
 		{
-			title: "Generate EdgeQL Query Tool Call",
+			title: "Run EdgeQL (Single Tool Call)",
 			description:
-				"Generate a tool call to execute an EdgeQL query against a specific instance and branch.",
+				"Generates a single tool call to execute an EdgeQL query against an instance/branch. Prefer 'prompt-edgeql-workflow' for validation-first.",
 			inputSchema: {
 				query: z.string(),
 				instance: z.string().optional(),
@@ -234,7 +237,7 @@ export function registerPrompts(server: McpServer) {
 			},
 		},
 		async (args) => {
-			let toolCall = `@[execute-edgeql query="${args.query}"`;
+			let toolCall = `@[execute-edgeql query="${args.query.replace(/"/g, '\\"')}"`;
 			if (args.instance) {
 				toolCall += ` instance="${args.instance}"`;
 			}
@@ -246,7 +249,7 @@ export function registerPrompts(server: McpServer) {
 				content: [
 					{
 						type: "text",
-						text: `Here is the tool call to run your query:\n\n${toolCall}`,
+						text: `Run the query with this tool call (consider validating first):\n\n${toolCall}`,
 					},
 				],
 			};

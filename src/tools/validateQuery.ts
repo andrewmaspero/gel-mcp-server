@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getDatabaseClient } from "../database.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
+import { validateConnectionArgs } from "../utils.js";
 
 class ValidationError extends Error {
 	constructor(message: string) {
@@ -26,6 +27,7 @@ export function registerValidateQuery(server: McpServer) {
 		},
 		async (args) => {
 			checkRateLimit("validate-query");
+            validateConnectionArgs(args);
 			const gelClient = getDatabaseClient({
 				instance: args.instance,
 				branch: args.branch,
