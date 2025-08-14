@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildSchemaCacheKey, getCached, setCached } from "../cache.js";
 import { createLogger } from "../logger.js";
 import {
 	buildToolResponse,
@@ -23,12 +24,11 @@ export function registerGetSchema(server: McpServer) {
 				branch: z.string().optional(),
 			},
 		},
-		async (args) => {
+        async (args) => {
 			try {
 				checkRateLimit("get-schema");
 				validateConnectionArgs(args);
-				const { client, instance, branch, autoSelected } =
-					getClientWithDefaults(args);
+                const { client, instance, branch, autoSelected } = getClientWithDefaults(args);
 
 				if (!client || !instance) {
 					return {
@@ -57,6 +57,19 @@ export function registerGetSchema(server: McpServer) {
         `;
 
 				try {
+                    // Cache key and check
+                    const cacheKey = buildSchemaCacheKey("get-schema", instance, branch);
+                    const cached = getCached<typeof result>(cacheKey);
+                    if (cached) {
+                        const statusMessage = getConnectionStatusMessage(instance, branch, autoSelected);
+                        return buildToolResponse({
+                            status: "success",
+                            title: "Schema overview (cached)",
+                            statusMessage,
+                            jsonData: cached,
+                        });
+                    }
+
 					const result: {
 						name: string;
 						properties: { name: string; target: { name: string } }[];
@@ -68,6 +81,9 @@ export function registerGetSchema(server: McpServer) {
 						branch,
 						autoSelected,
 					);
+                    // Cache the result for 60 seconds
+                    setCached(cacheKey, result, 60_000);
+
 					const textSections: string[] = [];
 					const schemaText = `Database Schema${statusMessage}:\n`;
 					textSections.push(schemaText);

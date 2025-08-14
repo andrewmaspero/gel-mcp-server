@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildSchemaCacheKey, getCached, setCached } from "../cache.js";
 import {
 	getClientWithDefaults,
 	getConnectionStatusMessage,
@@ -47,10 +48,35 @@ export function registerListSchemaTypes(server: McpServer) {
       `;
 
 			try {
+				const cacheKey = buildSchemaCacheKey(
+					"list-schema-types",
+					instance,
+					branch,
+				);
+				const cached = getCached<string[]>(cacheKey);
+				if (cached) {
+					const statusMessage = getConnectionStatusMessage(
+						instance,
+						branch,
+						autoSelected,
+					);
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Available schema types${statusMessage} (cached):`,
+							},
+							{ type: "text", text: safeJsonStringify(cached) },
+						],
+					};
+				}
+
 				const result = await client.query(query);
 				const types = (result as { name: string }[])
 					.map((t) => t.name.replace("default::", ""))
 					.sort();
+
+				setCached(cacheKey, types, 60_000);
 
 				const statusMessage = getConnectionStatusMessage(
 					instance,

@@ -250,35 +250,39 @@ export function validateQueryArgs(
 /**
  * Rate limiting state
  */
-type RateLimitState = { count: number; resetTime: number; executeCount: number };
+type RateLimitState = {
+	count: number;
+	resetTime: number;
+	executeCount: number;
+};
 
 export interface RateLimitStore {
-    get(key: string): RateLimitState | undefined;
-    set(key: string, value: RateLimitState): void;
-    delete(key: string): void;
-    entries(): IterableIterator<[string, RateLimitState]>;
+	get(key: string): RateLimitState | undefined;
+	set(key: string, value: RateLimitState): void;
+	delete(key: string): void;
+	entries(): IterableIterator<[string, RateLimitState]>;
 }
 
 class InMemoryRateLimitStore implements RateLimitStore {
-    private store = new Map<string, RateLimitState>();
-    get(key: string) {
-        return this.store.get(key);
-    }
-    set(key: string, value: RateLimitState) {
-        this.store.set(key, value);
-    }
-    delete(key: string) {
-        this.store.delete(key);
-    }
-    entries() {
-        return this.store.entries();
-    }
+	private store = new Map<string, RateLimitState>();
+	get(key: string) {
+		return this.store.get(key);
+	}
+	set(key: string, value: RateLimitState) {
+		this.store.set(key, value);
+	}
+	delete(key: string) {
+		this.store.delete(key);
+	}
+	entries() {
+		return this.store.entries();
+	}
 }
 
 let rateLimitStore: RateLimitStore = new InMemoryRateLimitStore();
 
 export function setRateLimitStore(store: RateLimitStore) {
-    rateLimitStore = store;
+	rateLimitStore = store;
 }
 
 /**
@@ -300,21 +304,21 @@ export function checkRateLimit(
 	const executeToolsLimit = config.security.rateLimit.executeToolsLimit;
 
 	// Clean up expired entries
-    for (const [key, state] of rateLimitStore.entries()) {
+	for (const [key, state] of rateLimitStore.entries()) {
 		if (now > state.resetTime) {
-            rateLimitStore.delete(key);
+			rateLimitStore.delete(key);
 		}
 	}
 
 	// Get or create state for this identifier
-    let state = rateLimitStore.get(identifier);
+	let state = rateLimitStore.get(identifier);
 	if (!state || now > state.resetTime) {
 		state = {
 			count: 0,
 			executeCount: 0,
 			resetTime: now + windowMs,
 		};
-        rateLimitStore.set(identifier, state);
+		rateLimitStore.set(identifier, state);
 	}
 
 	// Check general rate limit
@@ -353,7 +357,7 @@ export function getRateLimitStatus(identifier: string): {
 	executeRemaining: number;
 } {
 	const config = getConfig();
-    const state = rateLimitStore.get(identifier);
+	const state = rateLimitStore.get(identifier);
 
 	if (!state) {
 		return {
