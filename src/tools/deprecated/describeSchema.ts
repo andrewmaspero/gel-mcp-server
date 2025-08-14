@@ -1,11 +1,12 @@
+// Deprecated tool: replaced by consolidated 'schema' tool
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-	buildToolResponse,
 	getClientWithDefaults,
 	getConnectionStatusMessage,
-} from "../utils.js";
-import { checkRateLimit, validateSchemaTypeName } from "../validation.js";
+	safeJsonStringify,
+} from "../../utils.js";
+import { validateSchemaTypeName } from "../../validation.js";
 
 export function registerDescribeSchema(server: McpServer) {
 	server.registerTool(
@@ -21,7 +22,6 @@ export function registerDescribeSchema(server: McpServer) {
 			},
 		},
 		async (args) => {
-			checkRateLimit("describe-schema");
 			// Validate input
 			try {
 				validateSchemaTypeName(args.typeName);
@@ -87,12 +87,15 @@ export function registerDescribeSchema(server: McpServer) {
 				branch,
 				autoSelected,
 			);
-			return buildToolResponse({
-				status: "success",
-				title: `Schema for '${args.typeName}'`,
-				statusMessage,
-				jsonData: result,
-			});
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Schema for '${args.typeName}'${statusMessage}:`,
+					},
+					{ type: "text", text: safeJsonStringify(result) },
+				],
+			};
 		},
 	);
 }

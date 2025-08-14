@@ -93,6 +93,7 @@ export function registerPrompts(server: McpServer) {
 							"",
 							"Schema-first:",
 							'- Call @[schema action="types"]. Then @[schema action="describe" typeName="<Type>"].',
+							"- Always consult Gel docs via Context7 before writing queries: use library id /geldata/gel.",
 							"",
 							"Safe Query Workflow:",
 							"- Prefer parameterized arguments.",
@@ -157,6 +158,122 @@ export function registerPrompts(server: McpServer) {
 							"- 'Invalid params' ⇒ check required fields; re-run with corrected arguments.",
 							"- Rate limited ⇒ backoff and retry; batch where possible.",
 						].join("\n"),
+					},
+				},
+			],
+		}),
+	);
+
+	// Run EdgeQL helper prompt (single-query guidance)
+	server.registerPrompt(
+		"run-edgeql",
+		{
+			title: "Run EdgeQL (Guided)",
+			description:
+				"Produce the minimal, correct steps to validate then execute a single EdgeQL query using consolidated tools.",
+			argsSchema: {
+				query: z.string(),
+				instance: z.string().optional(),
+				branch: z.string().optional(),
+			},
+		},
+		({ query, instance, branch }) => {
+			const baseValidate = `@[query action=\"validate\" query=\"${query.replace(/"/g, '\\\\"')}\"]`;
+			const baseRun = `@[query action=\"run\" query=\"${query.replace(/"/g, '\\\\"')}\"]`;
+			const withConn = (s: string) =>
+				instance || branch
+					? s.replace(
+							"]",
+							`${instance ? ` instance=\"${instance}\"` : ""}${branch ? ` branch=\"${branch}\"` : ""}]`,
+						)
+					: s;
+			const text = [
+				"Validate then execute using consolidated tools:",
+				`- Validate: ${withConn(baseValidate)}`,
+				`- Run: ${withConn(baseRun)}`,
+				"- Before running, consult Gel docs via Context7 (/geldata/gel) to confirm clauses and operators.",
+				"If validation fails, inspect the message, adjust schema/filters/args, and re-validate before running.",
+			].join("\n");
+			return {
+				messages: [{ role: "user", content: { type: "text", text } }],
+			};
+		},
+	);
+
+	// Context7/Gel RAG bootstrap prompt
+	server.registerPrompt(
+		"gel-rag-bootstrap",
+		{
+			title: "Gel RAG Bootstrap (Context7)",
+			description:
+				"Always consult current Gel docs via Context7 (/geldata/gel) before crafting queries or schema tweaks.",
+			argsSchema: {},
+		},
+		() => ({
+			messages: [
+				{
+					role: "user",
+					content: {
+						type: "text",
+						text: [
+							"Use the Context7 library id directly: /geldata/gel (no resolve step).",
+							"Preferred search terms by intent:",
+							"- Queries: Overview, Literals, Sets, Paths, Types, Parameters, Select, Insert, Update, Delete, For, Group, With, Analyze, Path scoping, Transactions",
+							"- Schema: Object Types, Properties, Links, Computeds, Primitives, Indexes, Constraints, Inheritance, Aliases, Globals, Access Policies, Functions, Triggers, Mutation rewrites, Link properties, Modules, Migrations, Branches, Extensions, Annotations",
+							"Many models have outdated knowledge of Gel; always cross-check.",
+						].join("\n"),
+					},
+				},
+			],
+		}),
+	);
+
+	// Condensed Gel schema/perf principles
+	server.registerPrompt(
+		"gel-schema-principles",
+		{
+			title: "Gel Schema & Performance Principles (Essentials)",
+			description:
+				"Embed key schema and performance practices to guide planning and reviews.",
+			argsSchema: {},
+		},
+		() => ({
+			messages: [
+				{
+					role: "user",
+					content: {
+						type: "text",
+						text: [
+							"- Prefer one-to-many with single links + computed backlinks; avoid unnecessary multi join tables.",
+							"- Use link properties only when modeling many-to-many relationship data.",
+							"- Arrays for whole-list reads/writes; multi scalar properties when filtering elements.",
+							"- Favor polymorphic inheritance/union types; avoid composition anti-patterns.",
+							"- Index only fields you filter/order by; rely on built-ins for id/links/exclusive.",
+							"- Embrace nested object queries; use computed vs materialized wisely; keep access policies simple.",
+							"- Use [is Type] intersections to improve type-safety and planner behavior.",
+						].join("\n"),
+					},
+				},
+			],
+		}),
+	);
+
+	// Search docs helper prompt
+	server.registerPrompt(
+		"search-docs",
+		{
+			title: "Search Docs (Guided)",
+			description:
+				"Generate a call to search local documentation with context windows.",
+			argsSchema: { term: z.string() },
+		},
+		({ term }) => ({
+			messages: [
+				{
+					role: "user",
+					content: {
+						type: "text",
+						text: `Use: @[docs action=\"search\" term=\"${term.replace(/"/g, '\\\\"')}\"].`,
 					},
 				},
 			],
