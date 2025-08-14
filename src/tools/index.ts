@@ -2,22 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getDebugInfo } from "../database.js";
-import { registerDescribeSchema } from "./describeSchema.js";
-import { registerExecuteEdgeql } from "./executeEdgeql.js";
-import { registerExecuteEdgeqlFile } from "./executeEdgeqlFile.js";
-import { registerExecuteTypescript } from "./executeTypescript.js";
-import { registerGetSchema } from "./get-schema.js";
-import { registerListBranches } from "./list-branches.js";
-import { registerListCredentials } from "./list-credentials.js";
-import { registerListInstances } from "./list-instances.js";
-import { registerListSchemaTypes } from "./list-schema-types.js";
+import { registerConnection } from "./connection.js";
+import { registerDocs } from "./docs.js";
+import { registerCacheTools } from "./cache.js";
 import { registerPrompts } from "./prompts.js";
-import { registerRefreshSchema } from "./refreshSchema.js";
+import { registerQuery } from "./query.js";
 import { registerSchema } from "./schema.js";
-import { registerSearchDocs } from "./searchGelDocs.js";
-import { registerSessionManagement } from "./session-management.js";
-import { registerSwitchBranch } from "./switch-branch.js";
-import { registerValidateQuery } from "./validateQuery.js";
 
 export function registerAllTools(server: McpServer) {
 	// Debug tool to check working directory and file system
@@ -66,23 +56,13 @@ export function registerAllTools(server: McpServer) {
 		},
 	);
 
-	registerExecuteEdgeql(server);
-	registerExecuteEdgeqlFile(server);
-	registerValidateQuery(server);
-	registerDescribeSchema(server);
-	registerExecuteTypescript(server);
-	registerRefreshSchema(server);
-	registerSearchDocs(server);
-	registerListInstances(server);
-	registerListBranches(server);
-	registerSwitchBranch(server);
-	registerListCredentials(server);
-	// Consolidated schema tool supersedes get-schema & list-schema-types but keep both registered for compatibility
-	registerGetSchema(server);
-	registerListSchemaTypes(server);
+	// Consolidated tools
+	registerConnection(server);
 	registerSchema(server);
-	registerSessionManagement(server);
-	registerPrompts(server);
+	registerQuery(server);
+	registerDocs(server);
+    registerPrompts(server);
+    registerCacheTools(server);
 
 	// Advertise capabilities for clients that inspect during initialize
 	// Note: McpServer will expose these automatically based on handlers,
