@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
-import { getClientWithDefaults, getConnectionStatusMessage, validateConnectionArgs } from "../utils.js";
+import { getClientWithDefaults, getConnectionStatusMessage, validateConnectionArgs, buildToolResponse } from "../utils.js";
 import { checkRateLimit } from "../validation.js";
 
 const logger = createLogger("get-schema");
@@ -63,20 +63,17 @@ export function registerGetSchema(server: McpServer) {
 						branch,
 						autoSelected,
 					);
-					let schemaText = `Database Schema${statusMessage}:\n\n`;
-
-					result.forEach((type) => {
-						schemaText += `type ${type.name.replace("default::", "")} {\n`;
-						type.properties.forEach((prop) => {
-							schemaText += `  property ${prop.name} -> ${prop.target.name.replace("std::", "")};\n`;
-						});
-						type.links.forEach((link) => {
-							schemaText += `  link ${link.name} -> ${link.target.name.replace("default::", "")};\n`;
-						});
-						schemaText += "}\n\n";
-					});
-
-					return { content: [{ type: "text", text: schemaText }] };
+                    const textSections: string[] = [];
+                    const schemaText = `Database Schema${statusMessage}:\n`;
+                    textSections.push(schemaText);
+                    // Returning as JSON as well for structured consumption
+                    return buildToolResponse({
+                        status: "success",
+                        title: "Schema overview",
+                        statusMessage,
+                        textSections,
+                        jsonData: result,
+                    });
 				} catch (error: unknown) {
 					return {
 						content: [

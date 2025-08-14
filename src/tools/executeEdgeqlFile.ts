@@ -4,7 +4,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import JSON5 from "json5";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
-import { getClientWithDefaults, safeJsonStringify, validateConnectionArgs } from "../utils.js";
+import {
+    getClientWithDefaults,
+    validateConnectionArgs,
+    buildToolResponse,
+} from "../utils.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
 
 const logger = createLogger("executeEdgeqlFile");
@@ -45,8 +49,8 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 			try {
 				// Rate limit execute
 				checkRateLimit("execute-edgeql-file", true);
-                // Validate optional instance/branch
-                validateConnectionArgs(args);
+				// Validate optional instance/branch
+				validateConnectionArgs(args);
 
 				let resolvedPath: string;
 				if (path.isAbsolute(args.file_path)) {
@@ -209,31 +213,15 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 					validateQueryArgs(queryArgs),
 				);
 
-				const outputParts = [];
-				const statusMessage = autoSelected
-					? ` (auto-selected instance: ${instance})`
-					: "";
-				outputParts.push(
-					`✅ Query executed successfully from: ${path.basename(filePath)}${statusMessage}`,
-				);
-				outputParts.push("📊 **Result**");
-				outputParts.push("```json");
-				const json = safeJsonStringify(result);
-				const limited =
-					json.length > 20000
-						? `${json.slice(0, 20000)}\n... [truncated]`
-						: json;
-				outputParts.push(limited);
-				outputParts.push("```");
-
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: outputParts.join("\n\n"),
-						},
-					],
-				};
+                const statusMessage = autoSelected
+                    ? ` (auto-selected instance: ${instance})`
+                    : "";
+                return buildToolResponse({
+                    status: "success",
+                    title: `Query executed successfully from: ${path.basename(filePath)}`,
+                    statusMessage,
+                    jsonData: result,
+                });
 			} catch (error: unknown) {
 				logger.error("EdgeQL file execution error:", {
 					error: error instanceof Error ? error.message : String(error),

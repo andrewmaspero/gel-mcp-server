@@ -2,9 +2,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAvailableInstances } from "../database.js";
 import {
-	getClientWithDefaults,
-	getConnectionStatusMessage,
-	safeJsonStringify,
+    getClientWithDefaults,
+    getConnectionStatusMessage,
+    buildToolResponse,
 } from "../utils.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
 import { validateConnectionArgs } from "../utils.js";
@@ -65,21 +65,12 @@ export function registerExecuteEdgeql(server: McpServer) {
 					branch,
 					autoSelected,
 				);
-				const json = safeJsonStringify(result);
-				const limited =
-					json.length > 20000
-						? `${json.slice(0, 20000)}\n... [truncated]`
-						: json;
-				const output = `✅ Query executed successfully${statusMessage}:\n\n\`\`\`json\n${limited}\n\`\`\``;
-
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: output,
-						},
-					],
-				};
+                return buildToolResponse({
+                    status: "success",
+                    title: "Query executed successfully",
+                    statusMessage,
+                    jsonData: result,
+                });
 			} catch (error: unknown) {
 				return {
 					content: [

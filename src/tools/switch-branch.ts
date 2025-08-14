@@ -3,7 +3,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection } from "../session.js";
-import { validateInstanceName, validateBranchName, checkRateLimit } from "../validation.js";
+import {
+	checkRateLimit,
+	validateBranchName,
+	validateInstanceName,
+} from "../validation.js";
 
 export function registerSwitchBranch(server: McpServer) {
 	server.registerTool(
@@ -19,7 +23,7 @@ export function registerSwitchBranch(server: McpServer) {
 		},
 		async (args) => {
 			try {
-                checkRateLimit("switch-branch", true);
+				checkRateLimit("switch-branch", true);
 				const session = getDefaultConnection();
 				const instance = args.instance || session.defaultInstance;
 
@@ -34,19 +38,19 @@ export function registerSwitchBranch(server: McpServer) {
 					};
 				}
 
-                try {
-                    validateInstanceName(instance);
-                    validateBranchName(args.branch);
-                } catch (err) {
-                    return {
-                        content: [
-                            {
-                                type: "text",
-                                text: `Invalid input: ${err instanceof Error ? err.message : String(err)}`,
-                            },
-                        ],
-                    };
-                }
+				try {
+					validateInstanceName(instance);
+					validateBranchName(args.branch);
+				} catch (err) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Invalid input: ${err instanceof Error ? err.message : String(err)}`,
+							},
+						],
+					};
+				}
 
 				execSync(
 					`npx gel branch switch ${args.branch} --instance ${instance}`,

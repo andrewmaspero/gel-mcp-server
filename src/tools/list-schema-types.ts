@@ -4,9 +4,9 @@ import {
 	getClientWithDefaults,
 	getConnectionStatusMessage,
 	safeJsonStringify,
+	validateConnectionArgs,
 } from "../utils.js";
 import { checkRateLimit } from "../validation.js";
-import { validateConnectionArgs } from "../utils.js";
 
 export function registerListSchemaTypes(server: McpServer) {
 	server.registerTool(
@@ -22,7 +22,7 @@ export function registerListSchemaTypes(server: McpServer) {
 		},
 		async (args) => {
 			checkRateLimit("list-schema-types");
-            validateConnectionArgs(args);
+			validateConnectionArgs(args);
 			const { client, instance, branch, autoSelected } =
 				getClientWithDefaults(args);
 
