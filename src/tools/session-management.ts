@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection, setDefaultConnection } from "../session.js";
+import { buildToolResponse, validateConnectionArgs } from "../utils.js";
 
 export function registerSessionManagement(server: McpServer) {
 	server.registerTool(
@@ -15,22 +16,21 @@ export function registerSessionManagement(server: McpServer) {
 				branch: z.string().optional(),
 			},
 		},
-		async (args) => {
-			setDefaultConnection(args.instance, args.branch);
-			const currentDefaults = getDefaultConnection();
+        async (args) => {
+            // Validate optional inputs
+            validateConnectionArgs(args);
+            setDefaultConnection(args.instance, args.branch);
+            const currentDefaults = getDefaultConnection();
 
-			// Update the schema watcher for the new connection
-			updateSchemaWatcher();
+            // Update the schema watcher for the new connection
+            updateSchemaWatcher();
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Default connection updated. Current defaults: ${JSON.stringify(currentDefaults)}`,
-					},
-				],
-			};
-		},
+            return buildToolResponse({
+                status: "success",
+                title: "Default connection updated",
+                jsonData: currentDefaults,
+            });
+        },
 	);
 
 	server.registerTool(
@@ -41,16 +41,13 @@ export function registerSessionManagement(server: McpServer) {
 				"Retrieves the currently configured default database instance and branch for the session.",
 			inputSchema: {},
 		},
-		async () => {
-			const currentDefaults = getDefaultConnection();
-			return {
-				content: [
-					{
-						type: "text",
-						text: `Current default connection: ${JSON.stringify(currentDefaults)}`,
-					},
-				],
-			};
-		},
+        async () => {
+            const currentDefaults = getDefaultConnection();
+            return buildToolResponse({
+                status: "info",
+                title: "Current default connection",
+                jsonData: currentDefaults,
+            });
+        },
 	);
 }

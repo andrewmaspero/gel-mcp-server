@@ -5,8 +5,8 @@ import Fuse from "fuse.js";
 import { z } from "zod";
 import { findProjectRoot } from "../database.js";
 
-// moved to ../lib/regex.ts and re-exported for backward compat
-export { escapeRegExp } from "../lib/regex.js";
+// Local use of escapeRegExp
+import { escapeRegExp } from "../lib/regex.js";
 
 export function registerSearchDocs(server: McpServer) {
 	server.registerTool(

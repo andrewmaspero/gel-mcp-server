@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { findProjectRoot } from "../database.js";
 import { getDefaultConnection } from "../session.js";
+import { buildToolResponse } from "../utils.js";
 import { checkRateLimit, validateInstanceName } from "../validation.js";
 
 export function registerListBranches(server: McpServer) {
@@ -81,40 +82,26 @@ export function registerListBranches(server: McpServer) {
 				}
 
 				if (branches.length > 0) {
-					const branchList = branches
-						.map(
-							(branch) =>
-								`- ${branch.name}${branch.current ? " (current)" : ""}`,
-						)
-						.join("\n");
-
-					return {
-						content: [
-							{
-								type: "text" as const,
-								text: `Available branches for instance '${instance}':\n${branchList}`,
-							},
-						],
-					};
+					return buildToolResponse({
+						status: "success",
+						title: `Available branches for instance '${instance}'`,
+						jsonData: branches,
+					});
 				}
 
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: `No branches found for instance '${instance}'. Raw output:\n${output}`,
-						},
-					],
-				};
+				return buildToolResponse({
+					status: "warn",
+					title: `No branches found for instance '${instance}'`,
+					textSections: [output],
+				});
 			} catch (error: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error listing branches: ${error instanceof Error ? error.message : String(error)}`,
-						},
+				return buildToolResponse({
+					status: "error",
+					title: "Error listing branches",
+					textSections: [
+						error instanceof Error ? error.message : String(error),
 					],
-				};
+				});
 			}
 		},
 	);

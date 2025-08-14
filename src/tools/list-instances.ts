@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getAvailableInstances } from "../database.js";
+import { buildToolResponse } from "../utils.js";
 
 export function registerListInstances(server: McpServer) {
 	server.registerTool(
@@ -15,33 +16,28 @@ export function registerListInstances(server: McpServer) {
 				const instances = getAvailableInstances();
 
 				if (instances.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: "No instance_credentials directory found or it is empty. Create 'instance_credentials' and add JSON credential files (e.g., mydb.json) to define instances.",
-							},
+					return buildToolResponse({
+						status: "warn",
+						title: "No instances found",
+						textSections: [
+							"Create 'instance_credentials' and add JSON credential files (e.g., mydb.json) to define instances.",
 						],
-					};
+					});
 				}
 
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Found ${instances.length} instance(s): ${instances.join(", ")}`,
-						},
-					],
-				};
+				return buildToolResponse({
+					status: "success",
+					title: `Found ${instances.length} instance(s)`,
+					jsonData: instances,
+				});
 			} catch (error: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error listing instances: ${error instanceof Error ? error.message : String(error)}`,
-						},
+				return buildToolResponse({
+					status: "error",
+					title: "Error listing instances",
+					textSections: [
+						error instanceof Error ? error.message : String(error),
 					],
-				};
+				});
 			}
 		},
 	);

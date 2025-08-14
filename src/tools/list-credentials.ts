@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { listInstances } from "../database.js";
+import { buildToolResponse } from "../utils.js";
 
 export function registerListCredentials(server: McpServer) {
 	server.registerTool(
@@ -14,37 +15,28 @@ export function registerListCredentials(server: McpServer) {
 				const instances = await listInstances();
 
 				if (instances.length === 0) {
-					return {
-						content: [
-							{
-								type: "text",
-								text: "No credential files found in the instance_credentials directory.",
-							},
+					return buildToolResponse({
+						status: "warn",
+						title: "No credential files found",
+						textSections: [
+							"Create the 'instance_credentials' directory and add JSON credential files.",
 						],
-					};
+					});
 				}
 
-				const instanceList = instances
-					.map((instance) => `- ${instance}`)
-					.join("\n");
-
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Available credential files:\n${instanceList}`,
-						},
-					],
-				};
+				return buildToolResponse({
+					status: "success",
+					title: `Available credential files (${instances.length})`,
+					jsonData: instances,
+				});
 			} catch (error: unknown) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Error listing credentials: ${error instanceof Error ? error.message : String(error)}`,
-						},
+				return buildToolResponse({
+					status: "error",
+					title: "Error listing credentials",
+					textSections: [
+						error instanceof Error ? error.message : String(error),
 					],
-				};
+				});
 			}
 		},
 	);

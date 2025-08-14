@@ -2,12 +2,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getAvailableInstances } from "../database.js";
 import {
-    getClientWithDefaults,
-    getConnectionStatusMessage,
-    buildToolResponse,
+	buildToolResponse,
+	getClientWithDefaults,
+	getConnectionStatusMessage,
+	validateConnectionArgs,
 } from "../utils.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
-import { validateConnectionArgs } from "../utils.js";
 
 export function registerExecuteEdgeql(server: McpServer) {
 	server.registerTool(
@@ -27,8 +27,8 @@ export function registerExecuteEdgeql(server: McpServer) {
 			try {
 				// Rate limit execute
 				checkRateLimit("execute-edgeql", true);
-                // Validate optional instance/branch
-                validateConnectionArgs(args);
+				// Validate optional instance/branch
+				validateConnectionArgs(args);
 
 				const { client, instance, branch, autoSelected } =
 					getClientWithDefaults(args);
@@ -65,12 +65,12 @@ export function registerExecuteEdgeql(server: McpServer) {
 					branch,
 					autoSelected,
 				);
-                return buildToolResponse({
-                    status: "success",
-                    title: "Query executed successfully",
-                    statusMessage,
-                    jsonData: result,
-                });
+				return buildToolResponse({
+					status: "success",
+					title: "Query executed successfully",
+					statusMessage,
+					jsonData: result,
+				});
 			} catch (error: unknown) {
 				return {
 					content: [

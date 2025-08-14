@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-    getClientWithDefaults,
-    getConnectionStatusMessage,
-    buildToolResponse,
+	buildToolResponse,
+	getClientWithDefaults,
+	getConnectionStatusMessage,
 } from "../utils.js";
 import { checkRateLimit, validateSchemaTypeName } from "../validation.js";
 
@@ -82,17 +82,17 @@ export function registerDescribeSchema(server: McpServer) {
 				};
 			}
 
-            const statusMessage = getConnectionStatusMessage(
-                instance,
-                branch,
-                autoSelected,
-            );
-            return buildToolResponse({
-                status: "success",
-                title: `Schema for '${args.typeName}'`,
-                statusMessage,
-                jsonData: result,
-            });
+			const statusMessage = getConnectionStatusMessage(
+				instance,
+				branch,
+				autoSelected,
+			);
+			return buildToolResponse({
+				status: "success",
+				title: `Schema for '${args.typeName}'`,
+				statusMessage,
+				jsonData: result,
+			});
 		},
 	);
 }

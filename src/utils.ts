@@ -84,52 +84,60 @@ export function getClientWithDefaults(args: {
 /**
  * Validate optional instance and branch names when provided
  */
-export function validateConnectionArgs(args: { instance?: string; branch?: string }) {
-    if (args.instance) {
-        validateInstanceName(args.instance);
-    }
-    if (args.branch) {
-        validateBranchName(args.branch);
-    }
+export function validateConnectionArgs(args: {
+	instance?: string;
+	branch?: string;
+}) {
+	if (args.instance) {
+		validateInstanceName(args.instance);
+	}
+	if (args.branch) {
+		validateBranchName(args.branch);
+	}
 }
 
 /**
  * Format JSON data for MCP text output with truncation and code fencing
  */
 export function formatJsonForOutput(data: unknown, maxLength = 20000): string {
-    const json = safeJsonStringify(data);
-    const limited = json.length > maxLength ? `${json.slice(0, maxLength)}\n... [truncated]` : json;
-    return `\n\n\`\`\`json\n${limited}\n\`\`\``;
+	const json = safeJsonStringify(data);
+	const limited =
+		json.length > maxLength
+			? `${json.slice(0, maxLength)}\n... [truncated]`
+			: json;
+	return `\n\n\`\`\`json\n${limited}\n\`\`\``;
 }
 
 /**
  * Standardized tool response builder
  */
 export function buildToolResponse(options: {
-    status: "success" | "error" | "info" | "warn";
-    title: string;
-    statusMessage?: string;
-    textSections?: string[];
-    jsonData?: unknown;
+	status: "success" | "error" | "info" | "warn";
+	title: string;
+	statusMessage?: string;
+	textSections?: string[];
+	jsonData?: unknown;
 }): { content: Array<{ type: "text"; text: string }> } {
-    const emojiMap = {
-        success: "✅",
-        error: "❌",
-        info: "ℹ️",
-        warn: "⚠️",
-    } as const;
+	const emojiMap = {
+		success: "✅",
+		error: "❌",
+		info: "ℹ️",
+		warn: "⚠️",
+	} as const;
 
-    const header = `${emojiMap[options.status]} ${options.title}${options.statusMessage || ""}`;
-    const content: Array<{ type: "text"; text: string }> = [{ type: "text", text: header }];
-    if (options.textSections) {
-        for (const section of options.textSections) {
-            content.push({ type: "text", text: section });
-        }
-    }
-    if (options.jsonData !== undefined) {
-        content.push({ type: "text", text: formatJsonForOutput(options.jsonData) });
-    }
-    return { content };
+	const header = `${emojiMap[options.status]} ${options.title}${options.statusMessage || ""}`;
+	const content: Array<{ type: "text"; text: string }> = [
+		{ type: "text", text: header },
+	];
+	if (options.textSections) {
+		for (const section of options.textSections) {
+			content.push({ type: "text", text: section });
+		}
+	}
+	if (options.jsonData !== undefined) {
+		content.push({ type: "text", text: formatJsonForOutput(options.jsonData) });
+	}
+	return { content };
 }
 
 /**

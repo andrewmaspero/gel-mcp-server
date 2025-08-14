@@ -5,9 +5,9 @@ import JSON5 from "json5";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
 import {
-    getClientWithDefaults,
-    validateConnectionArgs,
-    buildToolResponse,
+	buildToolResponse,
+	getClientWithDefaults,
+	validateConnectionArgs,
 } from "../utils.js";
 import { checkRateLimit, validateQueryArgs } from "../validation.js";
 
@@ -213,15 +213,15 @@ export function registerExecuteEdgeqlFile(server: McpServer) {
 					validateQueryArgs(queryArgs),
 				);
 
-                const statusMessage = autoSelected
-                    ? ` (auto-selected instance: ${instance})`
-                    : "";
-                return buildToolResponse({
-                    status: "success",
-                    title: `Query executed successfully from: ${path.basename(filePath)}`,
-                    statusMessage,
-                    jsonData: result,
-                });
+				const statusMessage = autoSelected
+					? ` (auto-selected instance: ${instance})`
+					: "";
+				return buildToolResponse({
+					status: "success",
+					title: `Query executed successfully from: ${path.basename(filePath)}`,
+					statusMessage,
+					jsonData: result,
+				});
 			} catch (error: unknown) {
 				logger.error("EdgeQL file execution error:", {
 					error: error instanceof Error ? error.message : String(error),

@@ -1,7 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { createLogger } from "../logger.js";
-import { getClientWithDefaults, getConnectionStatusMessage, validateConnectionArgs, buildToolResponse } from "../utils.js";
+import {
+	buildToolResponse,
+	getClientWithDefaults,
+	getConnectionStatusMessage,
+	validateConnectionArgs,
+} from "../utils.js";
 import { checkRateLimit } from "../validation.js";
 
 const logger = createLogger("get-schema");
@@ -21,7 +26,7 @@ export function registerGetSchema(server: McpServer) {
 		async (args) => {
 			try {
 				checkRateLimit("get-schema");
-                validateConnectionArgs(args);
+				validateConnectionArgs(args);
 				const { client, instance, branch, autoSelected } =
 					getClientWithDefaults(args);
 
@@ -63,17 +68,17 @@ export function registerGetSchema(server: McpServer) {
 						branch,
 						autoSelected,
 					);
-                    const textSections: string[] = [];
-                    const schemaText = `Database Schema${statusMessage}:\n`;
-                    textSections.push(schemaText);
-                    // Returning as JSON as well for structured consumption
-                    return buildToolResponse({
-                        status: "success",
-                        title: "Schema overview",
-                        statusMessage,
-                        textSections,
-                        jsonData: result,
-                    });
+					const textSections: string[] = [];
+					const schemaText = `Database Schema${statusMessage}:\n`;
+					textSections.push(schemaText);
+					// Returning as JSON as well for structured consumption
+					return buildToolResponse({
+						status: "success",
+						title: "Schema overview",
+						statusMessage,
+						textSections,
+						jsonData: result,
+					});
 				} catch (error: unknown) {
 					return {
 						content: [
