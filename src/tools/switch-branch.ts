@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { updateSchemaWatcher } from "../http.js";
+import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection } from "../session.js";
 
 export function registerSwitchBranch(server: McpServer) {

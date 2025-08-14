@@ -5,9 +5,8 @@ import Fuse from "fuse.js";
 import { z } from "zod";
 import { findProjectRoot } from "../database.js";
 
-export function escapeRegExp(text: string) {
-	return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+// moved to ../lib/regex.ts and re-exported for backward compat
+export { escapeRegExp } from "../lib/regex.js";
 
 export function registerSearchDocs(server: McpServer) {
 	server.registerTool(

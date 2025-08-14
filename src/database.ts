@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "gel";
 import { createLogger } from "./logger.js";
+import { getDefaultConnection } from "./session.js";
 
 const logger = createLogger("database");
 
@@ -27,7 +28,7 @@ export function findProjectRoot(): string {
 				);
 				// Check if this is our specific project
 				if (
-					packageJson.name === "mcp-quickstart-ts" ||
+					packageJson.name === "gel-mcp-server" ||
 					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
 				) {
 					return currentDir;
@@ -55,7 +56,7 @@ export function findProjectRoot(): string {
 					fs.readFileSync(packageJsonPath, "utf8"),
 				);
 				if (
-					packageJson.name === "mcp-quickstart-ts" ||
+					packageJson.name === "gel-mcp-server" ||
 					(fs.existsSync(srcPath) && fs.existsSync(instanceCredentialsPath))
 				) {
 					return currentDir;
@@ -84,25 +85,10 @@ export interface SessionOptions {
 	branch?: string;
 }
 
-interface SessionState {
-	defaultInstance?: string;
-	defaultBranch?: string;
-}
-
-const sessionState: SessionState = {};
-
-export function setDefaultConnection(instance?: string, branch?: string) {
-	sessionState.defaultInstance = instance;
-	sessionState.defaultBranch = branch;
-}
-
-export function getDefaultConnection() {
-	return sessionState;
-}
-
 export function getDatabaseClient(options: SessionOptions = {}) {
-	const instance = options.instance || sessionState.defaultInstance;
-	const branch = options.branch || sessionState.defaultBranch;
+	const session = getDefaultConnection();
+	const instance = options.instance || session.defaultInstance;
+	const branch = options.branch || session.defaultBranch;
 
 	if (!instance) {
 		return null;
@@ -208,10 +194,11 @@ export async function loadQueryBuilder(
 	_branch: string = "main",
 ) {
 	const projectRoot = findProjectRoot();
-	const qbPath = path.join(projectRoot, "src", "edgeql-js");
+	const qbPath = path.join(projectRoot, "src", "edgeql-js", "index.js");
 
 	try {
-		const qbModule = await import(qbPath);
+		const { pathToFileURL } = await import("node:url");
+		const qbModule = await import(pathToFileURL(qbPath).href);
 		return qbModule;
 	} catch (error: unknown) {
 		logger.warn("Failed to load query builder:", {

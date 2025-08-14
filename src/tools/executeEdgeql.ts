@@ -1,7 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getAvailableInstances, getDatabaseClient } from "../database.js";
-import { getDefaultConnection, setDefaultConnection } from "../session.js";
+import { getAvailableInstances } from "../database.js";
+import {
+	getClientWithDefaults,
+	getConnectionStatusMessage,
+	safeJsonStringify,
+} from "../utils.js";
+import { checkRateLimit, validateQueryArgs } from "../validation.js";
 
 export function registerExecuteEdgeql(server: McpServer) {
 	server.registerTool(
@@ -9,7 +14,7 @@ export function registerExecuteEdgeql(server: McpServer) {
 		{
 			title: "Execute EdgeQL Query",
 			description:
-				"Executes an EdgeQL query against the database. If no instance/branch is specified, uses the current default connection.",
+				"Executes an EdgeQL query against the database. Uses the current default connection if no instance/branch is specified.",
 			inputSchema: {
 				query: z.string(),
 				args: z.record(z.string(), z.any()).optional(),
@@ -19,32 +24,13 @@ export function registerExecuteEdgeql(server: McpServer) {
 		},
 		async (args) => {
 			try {
-				// Smart default connection handling
-				let instance = args.instance;
-				let branch = args.branch;
+				// Rate limit execute
+				checkRateLimit("execute-edgeql", true);
 
-				if (!instance) {
-					const defaultConnection = getDefaultConnection();
-					instance = defaultConnection.defaultInstance;
-					branch = branch || defaultConnection.defaultBranch;
+				const { client, instance, branch, autoSelected } =
+					getClientWithDefaults(args);
 
-					// If no default instance, try to auto-set one
-					if (!instance) {
-						const availableInstances = getAvailableInstances();
-						if (availableInstances.length > 0) {
-							instance = availableInstances[0];
-							branch = branch || "dev"; // Default to dev branch
-							setDefaultConnection(instance, branch);
-						}
-					}
-				}
-
-				const gelClient = getDatabaseClient({
-					instance,
-					branch,
-				});
-
-				if (!gelClient) {
+				if (!client || !instance) {
 					const availableInstances = getAvailableInstances();
 					const instanceList =
 						availableInstances.length > 0
@@ -63,16 +49,31 @@ export function registerExecuteEdgeql(server: McpServer) {
 
 				let result: unknown;
 				if (args.args && Object.keys(args.args).length > 0) {
-					result = await gelClient.query(args.query, args.args);
+					const sanitizedArgs = validateQueryArgs(
+						args.args as Record<string, unknown>,
+					);
+					result = await client.query(args.query, sanitizedArgs);
 				} else {
-					result = await gelClient.query(args.query);
+					result = await client.query(args.query);
 				}
+
+				const statusMessage = getConnectionStatusMessage(
+					instance,
+					branch,
+					autoSelected,
+				);
+				const json = safeJsonStringify(result);
+				const limited =
+					json.length > 20000
+						? `${json.slice(0, 20000)}\n... [truncated]`
+						: json;
+				const output = `✅ Query executed successfully${statusMessage}:\n\n\`\`\`json\n${limited}\n\`\`\``;
 
 				return {
 					content: [
 						{
 							type: "text" as const,
-							text: `✅ Query executed successfully:\n${JSON.stringify(result, null, 2)}`,
+							text: output,
 						},
 					],
 				};

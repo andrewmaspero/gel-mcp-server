@@ -1,6 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDatabaseClient } from "../database.js";
+import {
+	getClientWithDefaults,
+	getConnectionStatusMessage,
+	safeJsonStringify,
+} from "../utils.js";
+import { checkRateLimit, validateSchemaTypeName } from "../validation.js";
 
 export function registerDescribeSchema(server: McpServer) {
 	server.registerTool(
@@ -8,7 +13,7 @@ export function registerDescribeSchema(server: McpServer) {
 		{
 			title: "Describe Schema Type",
 			description:
-				"Get detailed information about a specific schema type, including its properties and links. Use this to understand the structure of a type when constructing a query.",
+				"Get detailed information about a specific schema type, including its properties and links. Uses the current default connection if no instance/branch is specified.",
 			inputSchema: {
 				typeName: z.string(),
 				instance: z.string().optional(),
@@ -16,17 +21,34 @@ export function registerDescribeSchema(server: McpServer) {
 			},
 		},
 		async (args) => {
-			const gelClient = getDatabaseClient({
-				instance: args.instance,
-				branch: args.branch,
-			});
-			if (!gelClient) {
+			checkRateLimit("describe-schema");
+			// Validate input
+			try {
+				validateSchemaTypeName(args.typeName);
+			} catch (error) {
 				return {
 					content: [
-						{ type: "text", text: "Database client could not be initialized." },
+						{
+							type: "text" as const,
+							text: `❌ Invalid type name: ${error instanceof Error ? error.message : String(error)}`,
+						},
 					],
 				};
 			}
+			const { client, instance, branch, autoSelected } =
+				getClientWithDefaults(args);
+
+			if (!client || !instance) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "❌ Database client could not be initialized.",
+						},
+					],
+				};
+			}
+
 			const query = `
         WITH module schema
         SELECT ObjectType {
@@ -46,7 +68,7 @@ export function registerDescribeSchema(server: McpServer) {
         }
         FILTER .name = <str>$typeName
       `;
-			const result = await gelClient.query(query, {
+			const result = await client.query(query, {
 				typeName: `default::${args.typeName}`,
 			});
 			if (!result || result.length === 0) {
@@ -59,8 +81,20 @@ export function registerDescribeSchema(server: McpServer) {
 					],
 				};
 			}
+
+			const statusMessage = getConnectionStatusMessage(
+				instance,
+				branch,
+				autoSelected,
+			);
 			return {
-				content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+				content: [
+					{
+						type: "text",
+						text: `Schema for '${args.typeName}'${statusMessage}:`,
+					},
+					{ type: "text", text: safeJsonStringify(result) },
+				],
 			};
 		},
 	);

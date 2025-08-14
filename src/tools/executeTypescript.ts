@@ -4,6 +4,7 @@ import { getConfig } from "../config.js";
 import { getDatabaseClient } from "../database.js";
 import { ValidationError } from "../errors.js";
 import { createLogger } from "../logger.js";
+import { safeJsonStringify } from "../utils.js";
 import { checkRateLimit, validateTypeScriptCode } from "../validation.js";
 
 const logger = createLogger("executeTypescript");
@@ -68,28 +69,42 @@ async function executeInIsolatedVM(
 		// Inject safe objects into the VM
 		await jail.set("console", new ivm.ExternalCopy(safeConsole).copyInto());
 
-		// Create a safe gel client proxy that only exposes query method
+		// Bridge gel client query via ivm.Reference
 		if (gelClient && typeof gelClient === "object" && "query" in gelClient) {
-			const safeGelClient = {
-				query: async (query: string, args?: Record<string, unknown>) => {
-					if (typeof gelClient.query === "function") {
-						return await gelClient.query(query, args);
+			const hostQueryRef = new ivm.Reference(
+				async (q: string, a?: Record<string, unknown>) => {
+					const client: unknown = gelClient as unknown;
+					const queryFn = (
+						client as {
+							query?: (
+								q: string,
+								a?: Record<string, unknown>,
+							) => Promise<unknown>;
+						}
+					).query;
+					if (typeof queryFn === "function") {
+						return await queryFn(q, a);
 					}
 					throw new Error("Gel client query method not available");
 				},
-			};
-			await jail.set(
-				"gelClient",
-				new ivm.ExternalCopy(safeGelClient).copyInto(),
 			);
+			await jail.set("HOST_query", hostQueryRef);
 		}
 
-		// Create the execution script
+		// Create the execution script with optional gelClient proxy
+		const prelude = `
+            if (typeof HOST_query !== 'undefined') {
+                globalThis.gelClient = {
+                    query: (q, a) => HOST_query.applySyncPromise(undefined, [q, a])
+                };
+            }
+        `;
 		const script = await isolate.compileScript(`
-			(async function() {
-				${code}
-			})();
-		`);
+            (async function() {
+                ${prelude}
+                ${code}
+            })();
+        `);
 
 		// Execute with timeout
 		const result = await script.run(context, { timeout });
@@ -256,7 +271,14 @@ export function registerExecuteTypescript(server: McpServer) {
 						gelClient,
 						logger,
 					);
-					result = (unsafeResult as { result: unknown; logs: string[] }).result;
+					const { result: unsafeRes, logs } = unsafeResult as {
+						result: unknown;
+						logs: string[];
+					};
+					result = unsafeRes;
+					if (logs && logs.length > 0) {
+						logger.info("Unsafe execution logs", { logs });
+					}
 				}
 
 				return {
@@ -269,7 +291,7 @@ export function registerExecuteTypescript(server: McpServer) {
 							type: "text",
 							text:
 								result !== undefined
-									? `Result: ${JSON.stringify(result, null, 2)}`
+									? `Result: ${safeJsonStringify(result)}`
 									: "No result returned",
 						},
 						{

@@ -1,6 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDatabaseClient } from "../database.js";
+import {
+	getClientWithDefaults,
+	getConnectionStatusMessage,
+	safeJsonStringify,
+} from "../utils.js";
+import { checkRateLimit } from "../validation.js";
 
 export function registerListSchemaTypes(server: McpServer) {
 	server.registerTool(
@@ -8,24 +13,28 @@ export function registerListSchemaTypes(server: McpServer) {
 		{
 			title: "List Schema Types",
 			description:
-				"Lists all object types (e.g., User, Product) in the database schema. This is useful for discovering what data is available. After finding a type, use `describe-schema` to get its details.",
+				"Lists all object types (e.g., User, Product) in the database schema. Uses the current default connection if no instance/branch is specified.",
 			inputSchema: {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
 			},
 		},
 		async (args) => {
-			const gelClient = getDatabaseClient({
-				instance: args.instance,
-				branch: args.branch,
-			});
-			if (!gelClient) {
+			checkRateLimit("list-schema-types");
+			const { client, instance, branch, autoSelected } =
+				getClientWithDefaults(args);
+
+			if (!client || !instance) {
 				return {
 					content: [
-						{ type: "text", text: "Database client could not be initialized." },
+						{
+							type: "text",
+							text: "❌ Database client could not be initialized.",
+						},
 					],
 				};
 			}
+
 			const query = `
         WITH module schema
         SELECT ObjectType {
@@ -34,15 +43,22 @@ export function registerListSchemaTypes(server: McpServer) {
         FILTER .name LIKE 'default::%'
         ORDER BY .name;
       `;
+
 			try {
-				const result = await gelClient.query(query);
+				const result = await client.query(query);
 				const types = (result as { name: string }[])
 					.map((t) => t.name.replace("default::", ""))
 					.sort();
+
+				const statusMessage = getConnectionStatusMessage(
+					instance,
+					branch,
+					autoSelected,
+				);
 				return {
 					content: [
-						{ type: "text", text: "Available schema types:" },
-						{ type: "text", text: JSON.stringify(types, null, 2) },
+						{ type: "text", text: `Available schema types${statusMessage}:` },
+						{ type: "text", text: safeJsonStringify(types) },
 					],
 				};
 			} catch (error: unknown) {
@@ -50,7 +66,7 @@ export function registerListSchemaTypes(server: McpServer) {
 					content: [
 						{
 							type: "text",
-							text: `Error listing schema types: ${error instanceof Error ? error.message : String(error)}`,
+							text: `❌ Error listing schema types: ${error instanceof Error ? error.message : String(error)}`,
 						},
 					],
 				};

@@ -203,6 +203,14 @@ export function loadConfig(): Config {
 	}
 
 	// Merge with environment variables
+	const parseBool = (val: string | undefined): boolean | undefined => {
+		if (val === undefined) return undefined;
+		const v = val.toLowerCase();
+		if (v === "true" || v === "1") return true;
+		if (v === "false" || v === "0") return false;
+		return undefined;
+	};
+
 	const envConfig = {
 		server: {
 			port: process.env.GEL_MCP_PORT
@@ -224,8 +232,7 @@ export function loadConfig(): Config {
 				: undefined,
 		},
 		schemaWatcher: {
-			enabled:
-				process.env.GEL_SCHEMA_WATCHER_ENABLED === "false" ? false : undefined,
+			enabled: parseBool(process.env.GEL_SCHEMA_WATCHER_ENABLED),
 			maxRetries: process.env.GEL_SCHEMA_WATCHER_MAX_RETRIES
 				? parseInt(process.env.GEL_SCHEMA_WATCHER_MAX_RETRIES, 10)
 				: undefined,
@@ -235,10 +242,7 @@ export function loadConfig(): Config {
 		},
 		security: {
 			executeTypescript: {
-				enabled:
-					process.env.GEL_EXECUTE_TYPESCRIPT_ENABLED === "false"
-						? false
-						: undefined,
+				enabled: parseBool(process.env.GEL_EXECUTE_TYPESCRIPT_ENABLED),
 				timeout: process.env.GEL_EXECUTE_TYPESCRIPT_TIMEOUT
 					? parseInt(process.env.GEL_EXECUTE_TYPESCRIPT_TIMEOUT, 10)
 					: undefined,
@@ -247,8 +251,7 @@ export function loadConfig(): Config {
 					: undefined,
 			},
 			rateLimit: {
-				enabled:
-					process.env.GEL_RATE_LIMIT_ENABLED === "false" ? false : undefined,
+				enabled: parseBool(process.env.GEL_RATE_LIMIT_ENABLED),
 				maxRequests: process.env.GEL_RATE_LIMIT_MAX_REQUESTS
 					? parseInt(process.env.GEL_RATE_LIMIT_MAX_REQUESTS, 10)
 					: undefined,
@@ -264,7 +267,9 @@ export function loadConfig(): Config {
 				| "info"
 				| "debug"
 				| undefined,
-			enableConsole: process.env.NODE_ENV === "production" ? false : undefined,
+			enableConsole:
+				parseBool(process.env.GEL_LOG_CONSOLE) ??
+				(process.env.NODE_ENV === "production" ? false : undefined),
 		},
 	};
 

@@ -3,7 +3,7 @@ import { registerAllTools } from "./tools/index.js";
 
 export function createApp(): McpServer {
 	const server = new McpServer({
-		name: "gel-database",
+		name: "gel-mcp-server",
 		version: "1.2.0",
 	});
 

@@ -1,7 +1,9 @@
 import { execSync } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { findProjectRoot } from "../database.js";
 import { getDefaultConnection } from "../session.js";
+import { checkRateLimit, validateInstanceName } from "../validation.js";
 
 export function registerListBranches(server: McpServer) {
 	server.registerTool(
@@ -15,6 +17,7 @@ export function registerListBranches(server: McpServer) {
 			},
 		},
 		async (args) => {
+			checkRateLimit("list-branches");
 			const defaultConnection = getDefaultConnection();
 			const instance = args.instance || defaultConnection.defaultInstance;
 
@@ -30,10 +33,24 @@ export function registerListBranches(server: McpServer) {
 			}
 
 			try {
+				validateInstanceName(instance);
+			} catch (err) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Invalid instance name: ${err instanceof Error ? err.message : String(err)}`,
+						},
+					],
+				};
+			}
+
+			try {
 				// Get branches using the CLI (without --format=json as it's not supported)
 				const output = execSync(`gel branch list --instance=${instance}`, {
 					encoding: "utf8",
 					timeout: 10000,
+					cwd: findProjectRoot(),
 				});
 
 				// Parse the text output to extract branch names

@@ -80,4 +80,8 @@ export function registerAllTools(server: McpServer) {
 	registerListSchemaTypes(server);
 	registerSessionManagement(server);
 	registerPrompts(server);
+
+	// Advertise capabilities for clients that inspect during initialize
+	// Note: McpServer will expose these automatically based on handlers,
+	// but explicitly initializing reduces ambiguity in some clients.
 }

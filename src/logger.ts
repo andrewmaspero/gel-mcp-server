@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import winston from "winston";
+import { getConfig } from "./config.js";
 
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), "logs");
@@ -26,9 +27,11 @@ const fileFormat = winston.format.combine(
 	winston.format.json(),
 );
 
+const cfg = getConfig();
+
 // Create Winston logger instance
 const logger = winston.createLogger({
-	level: process.env.LOG_LEVEL || "info",
+	level: cfg.logging.level || process.env.LOG_LEVEL || "info",
 	format: fileFormat,
 	defaultMeta: { service: "gel-mcp-server" },
 	transports: [
@@ -36,14 +39,14 @@ const logger = winston.createLogger({
 		new winston.transports.File({
 			filename: path.join(logsDir, "error.log"),
 			level: "error",
-			maxsize: 5242880, // 5MB
-			maxFiles: 5,
+			maxsize: cfg.logging.maxSize, // bytes
+			maxFiles: cfg.logging.maxFiles,
 		}),
 		// Combined log file
 		new winston.transports.File({
 			filename: path.join(logsDir, "combined.log"),
-			maxsize: 5242880, // 5MB
-			maxFiles: 5,
+			maxsize: cfg.logging.maxSize,
+			maxFiles: cfg.logging.maxFiles,
 		}),
 	],
 	exceptionHandlers: [
@@ -59,7 +62,7 @@ const logger = winston.createLogger({
 });
 
 // Add console transport in development
-if (process.env.NODE_ENV !== "production") {
+if (cfg.logging.enableConsole && process.env.NODE_ENV !== "production") {
 	logger.add(
 		new winston.transports.Console({
 			format: consoleFormat,

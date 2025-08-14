@@ -19,7 +19,7 @@ export function registerListInstances(server: McpServer) {
 						content: [
 							{
 								type: "text",
-								text: "No instance_credentials directory found. Create this directory and add JSON credential files to define instances.",
+								text: "No instance_credentials directory found or it is empty. Create 'instance_credentials' and add JSON credential files (e.g., mydb.json) to define instances.",
 							},
 						],
 					};

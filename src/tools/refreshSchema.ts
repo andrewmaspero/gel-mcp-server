@@ -36,9 +36,14 @@ export function registerRefreshSchema(server: McpServer) {
 
 				const projectRoot = findProjectRoot();
 				const outputPath = path.join(projectRoot, "src", "edgeql-js");
+				const credentialsPath = path.join(
+					projectRoot,
+					"instance_credentials",
+					`${targetInstance}.json`,
+				);
 
 				// Generate the query builder
-				const cmd = `npx gel generate edgeql-js --instance=${targetInstance} --branch=${targetBranch} --out=${outputPath}`;
+				const cmd = `npx @gel/generate edgeql-js --credentials-file ${credentialsPath} --output-dir ${outputPath} --target ts --force-overwrite`;
 
 				try {
 					const output = exec(cmd, {

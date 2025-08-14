@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { updateSchemaWatcher } from "../http.js";
+import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection, setDefaultConnection } from "../session.js";
 
 export function registerSessionManagement(server: McpServer) {

@@ -1,7 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDatabaseClient } from "../database.js";
 import { createLogger } from "../logger.js";
+import { getClientWithDefaults, getConnectionStatusMessage } from "../utils.js";
+import { checkRateLimit } from "../validation.js";
 
 const logger = createLogger("get-schema");
 
@@ -11,7 +12,7 @@ export function registerGetSchema(server: McpServer) {
 		{
 			title: "Get Database Schema",
 			description:
-				"Retrieves the complete database schema for a given instance/branch. This shows all object types, properties, and links defined in the database, which is useful for understanding the data model before writing queries.",
+				"Retrieves the complete database schema. Uses the current default connection if no instance/branch is specified.",
 			inputSchema: {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
@@ -19,16 +20,16 @@ export function registerGetSchema(server: McpServer) {
 		},
 		async (args) => {
 			try {
-				const gelClient = getDatabaseClient({
-					instance: args.instance,
-					branch: args.branch,
-				});
-				if (!gelClient) {
+				checkRateLimit("get-schema");
+				const { client, instance, branch, autoSelected } =
+					getClientWithDefaults(args);
+
+				if (!client || !instance) {
 					return {
 						content: [
 							{
 								type: "text",
-								text: "Database client could not be initialized.",
+								text: "❌ Database client could not be initialized.",
 							},
 						],
 					};
@@ -54,8 +55,15 @@ export function registerGetSchema(server: McpServer) {
 						name: string;
 						properties: { name: string; target: { name: string } }[];
 						links: { name: string; target: { name: string } }[];
-					}[] = await gelClient.query(query);
-					let schemaText = "Database Schema:\n\n";
+					}[] = await client.query(query);
+
+					const statusMessage = getConnectionStatusMessage(
+						instance,
+						branch,
+						autoSelected,
+					);
+					let schemaText = `Database Schema${statusMessage}:\n\n`;
+
 					result.forEach((type) => {
 						schemaText += `type ${type.name.replace("default::", "")} {\n`;
 						type.properties.forEach((prop) => {
@@ -73,7 +81,7 @@ export function registerGetSchema(server: McpServer) {
 						content: [
 							{
 								type: "text",
-								text: `Error fetching schema: ${error instanceof Error ? error.message : String(error)}`,
+								text: `❌ Error fetching schema: ${error instanceof Error ? error.message : String(error)}`,
 							},
 						],
 					};
@@ -86,7 +94,7 @@ export function registerGetSchema(server: McpServer) {
 					content: [
 						{
 							type: "text",
-							text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+							text: `❌ Error: ${error instanceof Error ? error.message : String(error)}`,
 						},
 					],
 				};
