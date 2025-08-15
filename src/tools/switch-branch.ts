@@ -1,8 +1,14 @@
 import { execSync } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { updateSchemaWatcher } from "../http.js";
+import { emitConnectionChanged } from "../events.js";
+import { updateSchemaWatcher } from "../schemaWatcher.js";
 import { getDefaultConnection } from "../session.js";
+import {
+	checkRateLimit,
+	validateBranchName,
+	validateInstanceName,
+} from "../validation.js";
 
 export function registerSwitchBranch(server: McpServer) {
 	server.registerTool(
@@ -18,6 +24,7 @@ export function registerSwitchBranch(server: McpServer) {
 		},
 		async (args) => {
 			try {
+				checkRateLimit("switch-branch", true);
 				const session = getDefaultConnection();
 				const instance = args.instance || session.defaultInstance;
 
@@ -27,6 +34,20 @@ export function registerSwitchBranch(server: McpServer) {
 							{
 								type: "text",
 								text: "Error: No instance provided and no default instance is set. Use `set-default-connection` or provide an instance name.",
+							},
+						],
+					};
+				}
+
+				try {
+					validateInstanceName(instance);
+					validateBranchName(args.branch);
+				} catch (err) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Invalid input: ${err instanceof Error ? err.message : String(err)}`,
 							},
 						],
 					};
@@ -42,6 +63,7 @@ export function registerSwitchBranch(server: McpServer) {
 				// Update schema watcher if this affects the current default connection
 				if (instance === session.defaultInstance) {
 					updateSchemaWatcher();
+					emitConnectionChanged({ instance, branch: args.branch });
 				}
 
 				return {

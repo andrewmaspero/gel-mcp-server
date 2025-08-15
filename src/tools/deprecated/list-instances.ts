@@ -1,30 +1,28 @@
+// Deprecated tool: replaced by consolidated 'connection' tool (listInstances)
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getAvailableInstances } from "../database.js";
+import { getAvailableInstances } from "../../database.js";
 
 export function registerListInstances(server: McpServer) {
 	server.registerTool(
 		"list-instances",
 		{
 			title: "List Instances",
-			description:
-				"Lists all configured database instances. Each instance represents a separate database connection defined by a credential file. You must specify an instance to connect to if you are not using the default.",
+			description: "Lists all configured database instances.",
 			inputSchema: {},
 		},
 		async () => {
 			try {
 				const instances = getAvailableInstances();
-
 				if (instances.length === 0) {
 					return {
 						content: [
 							{
 								type: "text",
-								text: "No instance_credentials directory found. Create this directory and add JSON credential files to define instances.",
+								text: "No instances found. Create 'instance_credentials' and add JSON files.",
 							},
 						],
 					};
 				}
-
 				return {
 					content: [
 						{

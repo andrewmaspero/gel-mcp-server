@@ -6,35 +6,6 @@ import { createLogger } from "./logger.js";
 const logger = createLogger("validation");
 
 /**
- * SQL injection patterns to detect and block
- */
-const SQL_INJECTION_PATTERNS = [
-	/('|(\\x27)|(\\x2D\\x2D)|(%27)|(%2D%2D))/i,
-	/(\\x00|\\n|\\r|\\|\\x1a)/i,
-	/(union(\s+(all|select))?|insert(\s+into)?|update(\s+\w+\s+set)?|delete(\s+from)?)/i,
-	/(select\s+[\w\s,*()]+\s+from)/i,
-	/(drop\s+(table|database|schema|index|view|procedure|function))/i,
-	/(alter\s+(table|database|schema|index|view|procedure|function))/i,
-	/(create\s+(table|database|schema|index|view|procedure|function))/i,
-	/(exec(\s|\+)+(s|x)p\w+)/i,
-	/(script\s*:)/i,
-	/(javascript\s*:)/i,
-	/(vbscript\s*:)/i,
-	/(onload|onerror|onclick|onmouseover)\s*=/i,
-];
-
-/**
- * EdgeQL injection patterns (similar to SQL but for EdgeQL)
- */
-const EDGEQL_INJECTION_PATTERNS = [
-	/\b(union|intersect|except)\b/i,
-	/\b(for\s+\w+\s+in)\b/i,
-	/\b(with\s+module)\b.*\b(select|insert|update|delete)\b/i,
-	/(;|\|\||&&|\$\$)/,
-	/\b(introspect|configure)\b/i,
-];
-
-/**
  * Code injection patterns for TypeScript execution
  */
 const CODE_INJECTION_PATTERNS = [
@@ -92,61 +63,6 @@ export const SchemaTypeNameSchema = z
 		/^[a-zA-Z_][a-zA-Z0-9_]*$/,
 		"Schema type name must start with letter or underscore, followed by letters, numbers, or underscores",
 	);
-
-/**
- * Validate EdgeQL query for potential injection attacks
- */
-export function validateEdgeQLQuery(query: string): void {
-	const config = getConfig();
-
-	if (!query || typeof query !== "string") {
-		throw new ValidationError(
-			"Query must be a non-empty string",
-			"query",
-			query,
-		);
-	}
-
-	if (query.length > config.tools.validation.maxQueryLength) {
-		throw new ValidationError(
-			`Query too long (max ${config.tools.validation.maxQueryLength} characters)`,
-			"query",
-			query.length,
-		);
-	}
-
-	// Check for SQL injection patterns
-	for (const pattern of SQL_INJECTION_PATTERNS) {
-		if (pattern.test(query)) {
-			logger.warn("Potential SQL injection detected", {
-				pattern: pattern.source,
-				query: `${query.substring(0, 100)}...`,
-			});
-			throw new ValidationError(
-				"Query contains potentially dangerous patterns",
-				"query",
-				query,
-				{ pattern: pattern.source },
-			);
-		}
-	}
-
-	// Check for EdgeQL-specific injection patterns
-	for (const pattern of EDGEQL_INJECTION_PATTERNS) {
-		if (pattern.test(query)) {
-			logger.warn("Potential EdgeQL injection detected", {
-				pattern: pattern.source,
-				query: `${query.substring(0, 100)}...`,
-			});
-			throw new ValidationError(
-				"Query contains potentially dangerous EdgeQL patterns",
-				"query",
-				query,
-				{ pattern: pattern.source },
-			);
-		}
-	}
-}
 
 /**
  * Validate TypeScript code for execution
@@ -334,10 +250,40 @@ export function validateQueryArgs(
 /**
  * Rate limiting state
  */
-const rateLimitState = new Map<
-	string,
-	{ count: number; resetTime: number; executeCount: number }
->();
+type RateLimitState = {
+	count: number;
+	resetTime: number;
+	executeCount: number;
+};
+
+export interface RateLimitStore {
+	get(key: string): RateLimitState | undefined;
+	set(key: string, value: RateLimitState): void;
+	delete(key: string): void;
+	entries(): IterableIterator<[string, RateLimitState]>;
+}
+
+class InMemoryRateLimitStore implements RateLimitStore {
+	private store = new Map<string, RateLimitState>();
+	get(key: string) {
+		return this.store.get(key);
+	}
+	set(key: string, value: RateLimitState) {
+		this.store.set(key, value);
+	}
+	delete(key: string) {
+		this.store.delete(key);
+	}
+	entries() {
+		return this.store.entries();
+	}
+}
+
+let rateLimitStore: RateLimitStore = new InMemoryRateLimitStore();
+
+export function setRateLimitStore(store: RateLimitStore) {
+	rateLimitStore = store;
+}
 
 /**
  * Check rate limit for a given identifier
@@ -358,21 +304,21 @@ export function checkRateLimit(
 	const executeToolsLimit = config.security.rateLimit.executeToolsLimit;
 
 	// Clean up expired entries
-	for (const [key, state] of rateLimitState.entries()) {
+	for (const [key, state] of rateLimitStore.entries()) {
 		if (now > state.resetTime) {
-			rateLimitState.delete(key);
+			rateLimitStore.delete(key);
 		}
 	}
 
 	// Get or create state for this identifier
-	let state = rateLimitState.get(identifier);
+	let state = rateLimitStore.get(identifier);
 	if (!state || now > state.resetTime) {
 		state = {
 			count: 0,
 			executeCount: 0,
 			resetTime: now + windowMs,
 		};
-		rateLimitState.set(identifier, state);
+		rateLimitStore.set(identifier, state);
 	}
 
 	// Check general rate limit
@@ -411,7 +357,7 @@ export function getRateLimitStatus(identifier: string): {
 	executeRemaining: number;
 } {
 	const config = getConfig();
-	const state = rateLimitState.get(identifier);
+	const state = rateLimitStore.get(identifier);
 
 	if (!state) {
 		return {

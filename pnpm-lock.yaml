@@ -32,6 +32,9 @@ importers:
       isolated-vm:
         specifier: ^6.0.0
         version: 6.0.0
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       winston:
         specifier: ^3.17.0
         version: 3.17.0

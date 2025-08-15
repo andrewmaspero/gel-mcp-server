@@ -1,9 +1,10 @@
+// Deprecated tool: replaced by consolidated 'schema' tool (refresh)
 import { execSync as exec } from "node:child_process";
 import path from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { findProjectRoot } from "../database.js";
-import { getDefaultConnection } from "../session.js";
+import { findProjectRoot } from "../../database.js";
+import { getDefaultConnection } from "../../session.js";
 
 export function registerRefreshSchema(server: McpServer) {
 	server.registerTool(
@@ -11,7 +12,7 @@ export function registerRefreshSchema(server: McpServer) {
 		{
 			title: "Regenerate Query Builder Files",
 			description:
-				"Regenerates the EdgeQL query builder files for the active Gel instance. This is useful when the database schema has changed and you need to update the TypeScript types and query builder.",
+				"Regenerates the EdgeQL query builder files for the active Gel instance.",
 			inputSchema: {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
@@ -22,7 +23,6 @@ export function registerRefreshSchema(server: McpServer) {
 				const session = getDefaultConnection();
 				const targetInstance = args.instance || session.defaultInstance;
 				const targetBranch = args.branch || session.defaultBranch || "main";
-
 				if (!targetInstance) {
 					return {
 						content: [
@@ -33,20 +33,20 @@ export function registerRefreshSchema(server: McpServer) {
 						],
 					};
 				}
-
 				const projectRoot = findProjectRoot();
 				const outputPath = path.join(projectRoot, "src", "edgeql-js");
-
-				// Generate the query builder
-				const cmd = `npx gel generate edgeql-js --instance=${targetInstance} --branch=${targetBranch} --out=${outputPath}`;
-
+				const credentialsPath = path.join(
+					projectRoot,
+					"instance_credentials",
+					`${targetInstance}.json`,
+				);
+				const cmd = `npx @gel/generate edgeql-js --credentials-file ${credentialsPath} --output-dir ${outputPath} --target ts --force-overwrite`;
 				try {
 					const output = exec(cmd, {
 						encoding: "utf8",
 						timeout: 30000,
 						cwd: projectRoot,
 					});
-
 					return {
 						content: [
 							{

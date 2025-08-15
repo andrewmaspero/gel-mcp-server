@@ -1,3 +1,9 @@
+build/
+node_modules/
+logs/*.log
+*.swp
+.DS_Store
+pnpm-lock.yaml
 dbschema/
 gel.toml
 yarn.lock

@@ -1,7 +1,9 @@
+// Deprecated tool: replaced by consolidated 'connection' tool (listBranches)
 import { execSync } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDefaultConnection } from "../session.js";
+import { findProjectRoot } from "../../database.js";
+import { getDefaultConnection } from "../../session.js";
 
 export function registerListBranches(server: McpServer) {
 	server.registerTool(
@@ -9,15 +11,12 @@ export function registerListBranches(server: McpServer) {
 		{
 			title: "List Branches",
 			description:
-				"Lists all available branches for a specific Gel database instance. Use this to see what branches are available before switching or querying a specific branch.",
-			inputSchema: {
-				instance: z.string().optional(),
-			},
+				"Lists all available branches for a specific Gel database instance.",
+			inputSchema: { instance: z.string().optional() },
 		},
 		async (args) => {
 			const defaultConnection = getDefaultConnection();
 			const instance = args.instance || defaultConnection.defaultInstance;
-
 			if (!instance) {
 				return {
 					content: [
@@ -28,18 +27,14 @@ export function registerListBranches(server: McpServer) {
 					],
 				};
 			}
-
 			try {
-				// Get branches using the CLI (without --format=json as it's not supported)
 				const output = execSync(`gel branch list --instance=${instance}`, {
 					encoding: "utf8",
 					timeout: 10000,
+					cwd: findProjectRoot(),
 				});
-
-				// Parse the text output to extract branch names
 				const lines = output.trim().split("\n");
 				const branches: Array<{ name: string; current: boolean }> = [];
-
 				for (const line of lines) {
 					const trimmedLine = line.trim();
 					if (
@@ -47,30 +42,20 @@ export function registerListBranches(server: McpServer) {
 						!trimmedLine.startsWith("Available branches") &&
 						!trimmedLine.startsWith("---")
 					) {
-						// Check if this line contains a branch name
-						// Format is usually: "* branch_name" for current or "  branch_name" for others
 						const currentMatch = trimmedLine.match(/^\*\s+(.+)$/);
 						const regularMatch = trimmedLine.match(/^\s+(.+)$/);
-
-						if (currentMatch) {
+						if (currentMatch)
 							branches.push({ name: currentMatch[1].trim(), current: true });
-						} else if (regularMatch && !currentMatch) {
+						else if (regularMatch && !currentMatch)
 							branches.push({ name: regularMatch[1].trim(), current: false });
-						} else if (trimmedLine && !trimmedLine.includes(" ")) {
-							// Simple branch name without prefix
+						else if (trimmedLine && !trimmedLine.includes(" "))
 							branches.push({ name: trimmedLine, current: false });
-						}
 					}
 				}
-
 				if (branches.length > 0) {
 					const branchList = branches
-						.map(
-							(branch) =>
-								`- ${branch.name}${branch.current ? " (current)" : ""}`,
-						)
+						.map((b) => `- ${b.name}${b.current ? " (current)" : ""}`)
 						.join("\n");
-
 					return {
 						content: [
 							{
@@ -80,7 +65,6 @@ export function registerListBranches(server: McpServer) {
 						],
 					};
 				}
-
 				return {
 					content: [
 						{

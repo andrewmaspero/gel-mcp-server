@@ -1,5 +1,6 @@
+// Deprecated tool: replaced by consolidated 'connection' tool (listCredentials)
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { listInstances } from "../database.js";
+import { listInstances } from "../../database.js";
 
 export function registerListCredentials(server: McpServer) {
 	server.registerTool(
@@ -7,32 +8,26 @@ export function registerListCredentials(server: McpServer) {
 		{
 			title: "List Available Credential Files",
 			description:
-				"Lists all available instance credential files in the instance_credentials directory. Each credential file corresponds to a database instance you can connect to.",
+				"Lists all available instance credential files in the instance_credentials directory.",
 		},
 		async () => {
 			try {
 				const instances = await listInstances();
-
 				if (instances.length === 0) {
 					return {
 						content: [
 							{
 								type: "text",
-								text: "No credential files found in the instance_credentials directory.",
+								text: "No credential files found. Create 'instance_credentials' and add JSON files.",
 							},
 						],
 					};
 				}
-
-				const instanceList = instances
-					.map((instance) => `- ${instance}`)
-					.join("\n");
-
 				return {
 					content: [
 						{
 							type: "text",
-							text: `Available credential files:\n${instanceList}`,
+							text: `Available credential files (${instances.length}): ${instances.join(", ")}`,
 						},
 					],
 				};
