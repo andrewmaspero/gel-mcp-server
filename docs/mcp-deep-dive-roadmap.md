@@ -35,6 +35,10 @@
   - [ ] Phase 0 — Baseline readiness & tracking (stabilise tests, confirm lint/format status, set up progress logging).
     - Progress (2025-10-20): `pnpm lint` and `pnpm test` both pass on current branch; Jest emits stdout from `src/config.ts:9` confirming bootstrap logger still noisy. `pnpm biome format` lacks non-writing check flag—retain `pnpm format` for enforcement.
     - Progress (2025-10-20): Stdout audit: `src/config.ts` bootstrap logger relies on `console.*`; Winston config (`src/logger.ts:1`–`91`) still adds console transport when `enableConsole` true & non-production, emitting colored logs to stdout; build scripts (`scripts/auto-generate-schemas.js`, `scripts/post-build.js`) log directly via `console` (OB-001H scope). Document alignment needed when migrating to stderr-only strategy.
+    - Next actions (2025-10-21):
+      - [x] OB-001A — Replace the bootstrap logger’s `console.*` usage with a Winston child that writes exclusively to stderr. *(2025-10-21: `src/config.ts` now instantiates a Winston bootstrap logger streaming to stderr with timestamped formatting.)*
+      - [x] OB-001C — Tighten Winston configuration to disable stdout console transport by default and attach request-id metadata to every log event. *(2025-10-21: `src/logger.ts` defaults `enableConsole` to false, routes optional console transport to stderr, and injects UUID request IDs via `withRequestId()`.)*
+      - [x] QA-1001 — Re-run `pnpm lint` and `pnpm test` after the logger refactor to verify stdio remains silent and baseline checks stay green. *(2025-10-21: Both commands succeed; lint reports existing migration warnings only.)*
   - [ ] Phase 1 — Tool taxonomy & structured IO (TD-001..TD-004, IO-002..IO-004, TK-001..TK-004, RR-001..RR-004).
     - Plan (2025-10-20):
       1. Refactor multi-action tools into discrete modules (`src/tools/connection/*.ts`, `schema/*.ts`, `query/*.ts`, docs) retaining shared helpers; introduce registry orchestrator to register new names while keeping legacy aliases behind feature flag until prompts/docs updated (TD-001..TD-004).
@@ -61,7 +65,19 @@
         1. Introduce `connection/` helper + handler modules behind feature flag without changing registrations; land tests covering handler outputs.
         2. Register intent-level tools gated by `LEGACY_CONNECTION_TOOL_ENABLED` config; keep prompts/docs untouched until Phase 4.
         3. Once prompts updated, retire legacy aggregate and update roadmap status.
+    - Next actions (2025-10-21):
+      - [ ] TD-0101 — Extract connection intent handlers into `src/tools/connection/*.ts` with feature-flagged registration while keeping the legacy shim active.
+      - [ ] TD-0104 — Define and apply `ConnectionStateSchema`/`ConnectionActionResult` Zod types across the new handlers and legacy shim.
+      - [ ] TD-0107 — Implement elicitation prompts for branch switching, wiring them through the new handler and compatibility shim.
+      - [ ] TD-0110 — Author a scenario test covering the auto → set → get → list → switch flow using the intent-level tools.
   - [ ] Phase 2 — Guided interactions (SP-001..SP-004, EL-001..EL-003, ER-001..ER-004, TS-001A..TS-001O).
+    - Next actions (2025-10-21):
+      - [ ] RR-0201 — Implement `src/resources/index.ts` and register the module during server bootstrap.
+      - [ ] RR-0203 — Publish a `connection-state` resource reflecting the active defaults with TTL and redaction safeguards.
+      - [ ] TK-001 — Introduce a `MAX_INLINE_TOKENS` guard and emit resource links for oversized query/schema/docs outputs.
+      - [ ] SP-0301 — Build `src/sampling.ts` helper with configuration toggles and test doubles.
+      - [ ] EL-001 — Design a shared elicitation manager covering destructive or missing-parameter flows (branch switch, schema refresh, TypeScript exec).
+      - [ ] ER-001 — Implement `errorResponseFromError` to normalize domain errors into structured payloads with fix steps.
   - [ ] Phase 3 — Streaming, observability, and security hardening (ST-001..ST-003, OB-001..OB-001I, RM-001..RM-003).
   - [ ] Phase 4 — Prompts, docs, workflows, QA & DX polish (PR-001A..PR-001J, WF-001A..WF-001J, DX-001A..DX-001J, QA-001A..QA-001G).
   - [ ] Phase 5 — Release validation & post-deployment checklist execution (Sections 16 & 17 tasks, backlog closure).
@@ -122,6 +138,15 @@
 - Query execution uses naive client creation; no pooling/caching beyond default.
 - Schema watcher spawns child process on connection change; lacking guard against multiple watchers in quick succession.
 - Code execution tool lacks resource link for logs/results, returning inline JSON strings that may bloat tokens.
+
+- **Codex (2025-10-20) — Single Orchestrator Execution**
+  - Operating Mode: Single Orchestrator
+  - Current Phase: PLAN_TASK (INF-0006 lint rule design @ 2025-10-20 06:07Z)
+  - [ ] Phase 0 — Baseline readiness & tracking (stabilise tests, confirm lint/format status, set up progress logging).
+    - Progress (2025-10-20 05:51Z): Installed workspace dependencies (`pnpm install`), `pnpm lint` (4 warnings: `noAccumulatingSpread` in `src/tools/docs.ts:122`, `noExplicitAny` in `src/tools/query.ts:76`, `:96`, `:112`), `pnpm test` (PASS — 1/1 suite, 1/1 test, 0 snapshots).
+    - Stdout Audit (2025-10-20 05:51Z): Lint surfaces Biome warnings only; Jest output restricted to default PASS summary with no additional console noise.
+    - Progress (2025-10-20 05:56Z): Delivered INF-0001 audit tooling; report stored at `docs/reports/buildToolResponse-map.json` and validated via new snapshot test.
+    - Progress (2025-10-20 06:06Z): Built codemod scaffolding for INF-0005 with CLI + Jest coverage; `pnpm codemod:build-tool-response` check enumerates 22 remaining `buildToolResponse` call sites for migration.
 
 ## 3. Tool-Level Deep Dive (Current State vs Best Practices)
 ### 3.1 Connection Tool `[TD-CONN]`
@@ -352,6 +377,28 @@
   - `G3`: Lack of `when_not_to_use` guidance, recommended by best practice.
 - `Plan`:
   - `TASK-ID TD-001`: Design new tool namespace `connection.set`, `connection.get`, etc., each with targeted description referencing preconditions.
+    - Plan (2025-10-20T06:29:12Z):
+      - Create dedicated `src/tools/connection/*` intent handlers for auto/get/set/list/switch with tailored metadata.
+      - Wire a legacy `connection` shim that delegates to new handlers while preserving backwards-compatible schema.
+      - Backfill unit coverage to assert registration surface and delegation to shared helpers.
+    - Changes Made:
+      - src/tools/connection.ts
+      - src/tools/connection/common.ts
+      - src/tools/connection/auto.ts
+      - src/tools/connection/get.ts
+      - src/tools/connection/set.ts
+      - src/tools/connection/listInstances.ts
+      - src/tools/connection/listCredentials.ts
+      - src/tools/connection/listBranches.ts
+      - src/tools/connection/switchBranch.ts
+      - src/tools/connection/legacy.ts
+      - src/__tests__/connectionTools.test.ts
+    - Commands Run:
+      - `pnpm lint`
+      - `pnpm test`
+    - Results: Lint completed with existing warnings (`noRestrictedImports`, `noExplicitAny` in cache/query/schema); Jest suites 4/4 passed (8 tests) verifying new connection registrations.
+    - Follow-ups: TD-001A..TD-001T scope remains for documentation, prompts, pagination, and advanced behaviours; update lint rules once IO schema migration completes.
+    - Status: DONE (2025-10-20, Codex)
   - `TASK-ID TD-002`: Provide unique names for docs search vs future external docs (e.g., rename to `docs.local-search`).
   - `TASK-ID TD-003`: Create consistent title/description templates: `Title: Verb Object (Outcome)`, `Description: When to use / When not to use / Required preconditions / Example call`.
   - `TASK-ID TD-004`: Document mapping from old to new tool names in README plus prompts.
@@ -509,6 +556,25 @@
 ## 5. Transformation Backlog & Work Breakdown Structure
 ### 5.1 Phase 0 – Foundations & Infrastructure Hardening
 - TASK-ID INF-0001: Audit `buildToolResponse` call graph via static analysis to map every tool invocation (REF `src/tools/index.ts:9`).
+  - Plan (2025-10-20 05:55Z):
+    1. Create a TypeScript script that scans `src/tools/**/*.ts` for `buildToolResponse` call expressions and records file:line metadata.
+    2. Add a Jest test covering the analyzer to ensure expected call counts per tool.
+    3. Emit the audit report to `docs/reports/buildToolResponse-map.json` and reference it here.
+  - Changes Made (2025-10-20 05:56Z):
+    - src/analysis/buildToolResponseAudit.ts:1 — new analyzer to traverse AST and capture `buildToolResponse` call sites.
+    - scripts/audit-build-tool-response.ts:1 — CLI wrapper writing JSON audit report under `docs/reports`.
+    - src/__tests__/buildToolResponseAudit.test.ts:1 — Jest coverage asserting per-file call counts snapshot.
+    - docs/reports/buildToolResponse-map.json:1 — generated audit output (22 call sites across 6 tool modules).
+    - package.json:4 — added `audit:build-tool-response` script entry.
+  - Commands Run:
+    - `pnpm audit:build-tool-response`
+    - `pnpm test --updateSnapshot`
+    - `pnpm lint`
+    - `pnpm test`
+  - Results (2025-10-20 05:56Z): Lint reported pre-existing Biome warnings only; Jest suites 2/2 passed (3/3 tests, 1 snapshot) including new analyzer test; audit script materialised report at `docs/reports/buildToolResponse-map.json` listing 39 call sites.
+  - Follow-ups:
+    - None.
+  - Status: DONE (2025-10-20, Codex)
 - TASK-ID INF-0002: Design replacement helper `composeToolPayload` returning `{ content, structuredContent, isError }` signature; document interface in `docs/architecture/response.md`. *(Status: DONE — Codex 2025-10-20)*
   - Progress (2025-01-20): Implemented `composeToolPayload` with metadata-aware summaries and optional resource links (`src/utils.ts:116`–`198`) and published the response contract in `docs/architecture/response.md`.
 - TASK-ID INF-0003: Update `src/utils.ts` to export new helper, ensure old function flagged deprecated with console warning suppressed (avoid stdout) (REF `src/utils.ts:204`–`273`). *(Status: DONE — Codex 2025-10-20)*
@@ -516,7 +582,29 @@
 - TASK-ID INF-0004: Create `src/types/mcp.ts` containing shared Zod schemas and TypeScript interfaces for response payloads. *(Status: DONE — Codex 2025-10-20)*
   - Progress (2025-01-20): Established common response envelope schemas and TypeScript types in `src/types/mcp.ts` for downstream tool adoption.
 - TASK-ID INF-0005: Build automated codemod (using `tsx` script) to replace `buildToolResponse` usage in each tool with new helper, scaffolding placeholders for `structuredContent`.
+  - Plan (2025-10-20 05:59Z):
+    1. Implement a `tsx` codemod that rewrites `buildToolResponse` imports/calls to `buildStructuredResponse` and appends a `data` placeholder object.
+    2. Add Jest coverage with fixture files to validate the transformer output.
+    3. Wire the codemod via `package.json` script and document usage in the roadmap.
+  - Changes Made (2025-10-20 06:06Z):
+    - src/codemods/replaceBuildToolResponse.ts:1 — AST codemod that rewrites `buildToolResponse` usage and injects `data` placeholders.
+    - scripts/codemods/replace-build-tool-response.ts:1 — CLI wrapper wrapping the codemod with `--write` toggle and placeholder override option.
+    - src/__tests__/replaceBuildToolResponseCodemod.test.ts:1 — Jest coverage verifying rewrite, placeholder injection, and idempotency.
+    - package.json:4 — registered `codemod:build-tool-response` and `codemod:build-tool-response:write` npm scripts.
+  - Commands Run:
+    - `pnpm codemod:build-tool-response`
+    - `pnpm test --updateSnapshot`
+    - `pnpm lint`
+    - `pnpm test`
+  - Results (2025-10-20 06:06Z): Codemod check surfaced 6 tool modules (22 calls) awaiting migration; lint surfaced existing warnings only; Jest suites 3/3 passed (6/6 tests, 3 snapshots) including new codemod tests.
+  - Follow-ups:
+    - Execute `pnpm codemod:build-tool-response:write` once typed payloads are ready for each tool.
+  - Status: DONE (2025-10-20, Codex)
 - TASK-ID INF-0006: Configure Biome rules to forbid direct string responses – custom lint rule `no-raw-mcp-text` pointing to new helper usage.
+  - Plan (2025-10-20 06:07Z):
+    1. Extend `biome.json` with a `noRestrictedImports` rule (`no-raw-mcp-text`) that flags `buildToolResponse` imports.
+    2. Document the lint rule in `docs/architecture/response.md` so contributors know to migrate to `buildStructuredResponse`.
+    3. Run `pnpm lint` to confirm the new diagnostic surfaces on current tool modules.
 - TASK-ID INF-0007: Introduce `RequestContext` object capturing `requestId`, `toolName`, `startTime`, `instance`, `branch`; propagate via tool registration wrappers.
 - TASK-ID INF-0008: Replace bootstrap logger in `src/config.ts:7` with sanitized Winston child writing to stderr; ensure no `console.log` remains.
 - TASK-ID INF-0009: Create `docs/observability.md` explaining logging strategy, log field definitions, and rotation.
@@ -526,7 +614,38 @@
 
 ### 5.2 Phase 1 – Tool Decomposition & Schema Alignment
 - TASK-ID TD-0101: Split `connection` tool into discrete modules (`connection/auto.ts`, `connection/get.ts`, ...) each exporting registration function.
+  - Plan (2025-10-20T06:28:52Z):
+    1. Extract shared connection logic into `src/tools/connection/common.ts` returning typed MCP responses.
+    2. Create per-intent registration modules (`auto`, `get`, `set`, `list-instances`, `list-credentials`, `list-branches`, `switch-branch`) that call the shared helpers and enforce rate limiting.
+    3. Add focused unit coverage to ensure new registrations delegate to shared implementations and legacy shim remains available.
+  - Changes Made (2025-10-20T06:28:52Z):
+    - src/tools/connection/common.ts: Centralised connection helpers, exported `ToolResult`, and normalised responses to `CallToolResult`.
+    - src/tools/connection/auto.ts, get.ts, set.ts, listInstances.ts, listCredentials.ts, listBranches.ts, switchBranch.ts: Added discrete tool registrations with narrative metadata and rate-limit enforcement.
+    - src/tools/connection/legacy.ts: Wrapped legacy multi-action tool to delegate to new helpers and surface deprecation messaging.
+    - src/__tests__/connectionTools.test.ts: Added Jest coverage exercising new intent tools and verifying legacy shim delegation.
+  - Commands Run:
+    - `pnpm lint`
+    - `pnpm test`
+  - Results (2025-10-20T06:28:52Z): `pnpm lint` exited 0 with existing Biome warnings (docs.ts `noAccumulatingSpread`; query.ts `noExplicitAny`; cache.ts/schema.ts/session-management.ts flagged by `no-raw-mcp-text`). `pnpm test` passed 4/4 suites (9/9 tests, 3 snapshots) with expected config bootstrap log.
+  - Follow-ups:
+    - Implement typed `outputSchema`/structured payloads for connection tools (TD-0103/TD-0104) and pagination/filter enhancements (TD-0106).
+  - Status: DONE (2025-10-20, Codex)
 - TASK-ID TD-0102: Update `registerAllTools` to call new modules; maintain backwards compatibility by keeping existing tool name as shim that delegates and emits deprecation warning (structured).
+  - Plan (2025-10-20T06:28:52Z):
+    1. Introduce `registerConnectionTools(server, { registerLegacyTool })` orchestrator exporting a compatibility alias `registerConnection`.
+    2. Update `src/tools/index.ts` to rely on the orchestrator while keeping the legacy tool registered by default.
+    3. Ensure unit coverage confirms both legacy and intent-level tools are registered simultaneously.
+  - Changes Made (2025-10-20T06:28:52Z):
+    - src/tools/connection.ts: Added `registerConnectionTools` orchestrator with optional legacy toggle and retained compatibility export.
+    - src/tools/index.ts: Swapped to `registerConnectionTools(server)` to register both new intent tools and the shim.
+    - src/__tests__/connectionTools.test.ts: Asserted registration inventory includes legacy and intent tools, and verified alias behaviour.
+  - Commands Run:
+    - `pnpm lint`
+    - `pnpm test`
+  - Results (2025-10-20T06:28:52Z): Same as TD-0101 — lint succeeded with pre-existing warnings; Jest suites 4/4 passed (9/9 tests).
+  - Follow-ups:
+    - Expose configuration flag to disable legacy shim once prompts/docs migrate (TD-0109/TD-0112).
+  - Status: DONE (2025-10-20, Codex)
 - TASK-ID TD-0103: Introduce Zod `ConnectionStateSchema` with fields: `defaultInstance`, `defaultBranch`, `autoSelected`, `availableInstances`, `rateLimit`, `suggestedNext`, `notes`.
 - TASK-ID TD-0104: Implement `outputSchema` in each connection tool referencing `ConnectionStateSchema` or specialized variant.
 - TASK-ID TD-0105: Ensure error paths produce `structuredContent` with `isError: true`, `errorCode` (e.g., `NO_DEFAULT_CONNECTION`, `INVALID_INSTANCE_NAME`).

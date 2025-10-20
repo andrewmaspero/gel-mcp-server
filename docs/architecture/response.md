@@ -78,3 +78,6 @@ Behaviour:
 
 `buildToolResponse` only creates text payloads and should be removed as each tool migrates.  
 When refactoring a tool, replace the call with `composeToolPayload` and update this document if new patterns emerge.
+
+
+Biome lint rule `no-raw-mcp-text` (configured via `noRestrictedImports`) now warns whenever a module imports `buildToolResponse`; migrate to `buildStructuredResponse`/`composeToolPayload` to satisfy the guardrail.

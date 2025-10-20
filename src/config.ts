@@ -1,23 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import winston from "winston";
 import { findProjectRoot } from "./database.js";
 
 // Bootstrap logger to avoid circular dependency: config -> logger -> config
-const logger = {
-	info: (message: string, meta?: Record<string, unknown>) =>
-		console.log(
-			`[config] INFO: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
-		),
-	warn: (message: string, meta?: Record<string, unknown>) =>
-		console.warn(
-			`[config] WARN: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
-		),
-	error: (message: string, meta?: Record<string, unknown>) =>
-		console.error(
-			`[config] ERROR: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
-		),
-};
+const bootstrapLogger = winston.createLogger({
+	level: process.env.LOG_LEVEL ?? "info",
+	format: winston.format.combine(
+		winston.format.timestamp({ format: "YYYY-MM-DDTHH:mm:ss.SSSZ" }),
+		winston.format.printf(({ timestamp, level, message, ...meta }) => {
+			const metaString =
+				meta && Object.keys(meta).length > 0
+					? ` ${JSON.stringify(meta)}`
+					: "";
+			return `[${timestamp}] ${level}: ${message}${metaString}`;
+		}),
+	),
+	transports: [
+		new winston.transports.Stream({
+			stream: process.stderr,
+		}),
+	],
+});
+
+const logger = bootstrapLogger.child({ component: "config" });
 
 // Configuration schema
 const ConfigSchema = z.object({
@@ -149,13 +156,13 @@ const ConfigSchema = z.object({
 			level: z.enum(["error", "warn", "info", "debug"]).default("info"),
 			maxFiles: z.number().default(5),
 			maxSize: z.number().default(5242880), // 5MB
-			enableConsole: z.boolean().default(true),
+			enableConsole: z.boolean().default(false),
 		})
 		.default(() => ({
 			level: "info" as const,
 			maxFiles: 5,
 			maxSize: 5242880,
-			enableConsole: true,
+			enableConsole: false,
 		})),
 
 	// Tool settings
@@ -368,12 +375,12 @@ export function createSampleConfig(): void {
 				executeToolsLimit: 10,
 			},
 		},
-		logging: {
-			level: "info",
-			maxFiles: 5,
-			maxSize: 5242880,
-			enableConsole: true,
-		},
+	logging: {
+		level: "info",
+		maxFiles: 5,
+		maxSize: 5242880,
+		enableConsole: false,
+	},
 		tools: {
 			validation: {
 				strictMode: true,

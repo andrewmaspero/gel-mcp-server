@@ -1,0 +1,148 @@
+[
+  {
+    "file": "src/tools/cache.ts",
+    "toolName": "cache",
+    "calls": [
+      {
+        "line": 22,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 29,
+        "column": 11,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 52,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 57,
+        "column": 11,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/connection/common.ts",
+    "toolName": "common",
+    "calls": [
+      {
+        "line": 37,
+        "column": 9,
+        "functionName": "toToolResult"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/connection/legacy.ts",
+    "toolName": "legacy",
+    "calls": [
+      {
+        "line": 70,
+        "column": 12,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/query.ts",
+    "toolName": "query",
+    "calls": [
+      {
+        "line": 37,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 53,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 62,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 69,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 77,
+        "column": 13,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 85,
+        "column": 13,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 100,
+        "column": 13,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 122,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 131,
+        "column": 12,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/schema.ts",
+    "toolName": "schema",
+    "calls": [
+      {
+        "line": 96,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 141,
+        "column": 15,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 153,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 194,
+        "column": 14,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 208,
+        "column": 14,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/session-management.ts",
+    "toolName": "session-management",
+    "calls": [
+      {
+        "line": 33,
+        "column": 11,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 51,
+        "column": 11,
+        "functionName": "registerTool"
+      }
+    ]
+  }
+]
