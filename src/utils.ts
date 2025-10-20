@@ -1,5 +1,10 @@
 import { getAvailableInstances, getDatabaseClient } from "./database.js";
 import { getDefaultConnection, setDefaultConnection } from "./session.js";
+import type {
+	ToolContent,
+	ToolResponse,
+	ToolResponseMeta,
+} from "./types/mcp.js";
 import { validateBranchName, validateInstanceName } from "./validation.js";
 
 /**
@@ -99,45 +104,195 @@ export function validateConnectionArgs(args: {
 /**
  * Format JSON data for MCP text output with truncation and code fencing
  */
-export function formatJsonForOutput(data: unknown, maxLength = 20000): string {
+export function formatJsonForOutput(
+	data: unknown,
+	maxLength = 20000,
+): {
+	formatted: string;
+	preview: string;
+	truncated: boolean;
+} {
 	const json = safeJsonStringify(data);
-	const limited =
-		json.length > maxLength
-			? `${json.slice(0, maxLength)}\n... [truncated]`
-			: json;
-	return `\n\n\`\`\`json\n${limited}\n\`\`\``;
+	const truncated = json.length > maxLength;
+	const limited = truncated
+		? `${json.slice(0, maxLength)}\n... [truncated]`
+		: json;
+	return {
+		formatted: `\n\n\`\`\`json\n${limited}\n\`\`\``,
+		preview: limited,
+		truncated,
+	};
+}
+
+export interface DefaultToolResponseData {
+	title: string;
+	statusMessage?: string;
+	textSections: string[];
+	nextSteps: string[];
+	jsonData?: unknown;
+	jsonPreview?: string;
+}
+
+const STATUS_EMOJI: Record<ToolResponseMeta["status"], string> = {
+	ok: "✅",
+	error: "❌",
+	info: "ℹ️",
+	warn: "⚠️",
+};
+
+/**
+ * Compose a structured MCP tool response with consistent metadata.
+ */
+export function composeToolPayload<T>({
+	meta,
+	data,
+	additionalText,
+	resourceLinks,
+	omitMetaDetails,
+	isError,
+}: {
+	meta: ToolResponseMeta;
+	data: T;
+	additionalText?: string[];
+	resourceLinks?: Array<Exclude<ToolContent, { type: "text"; text: string }>>;
+	omitMetaDetails?: boolean;
+	isError?: boolean;
+}): ToolResponse<T> {
+	const content: ToolContent[] = [];
+	const summaryPrefix = STATUS_EMOJI[meta.status] ?? "";
+	const summaryText =
+		summaryPrefix.length > 0
+			? `${summaryPrefix} ${meta.summary}`
+			: meta.summary;
+	content.push({ type: "text", text: summaryText });
+
+	if (!omitMetaDetails) {
+		for (const detail of meta.details) {
+			if (detail.trim().length > 0) {
+				content.push({ type: "text", text: detail });
+			}
+		}
+	}
+
+	if (additionalText) {
+		for (const section of additionalText) {
+			if (section.trim().length > 0) {
+				content.push({ type: "text", text: section });
+			}
+		}
+	}
+
+	if (resourceLinks) {
+		for (const link of resourceLinks) {
+			content.push(link);
+		}
+	}
+
+	return {
+		content,
+		structuredContent: {
+			meta,
+			data,
+		},
+		isError: isError ?? meta.status === "error",
+	};
 }
 
 /**
  * Standardized tool response builder
  */
-export function buildToolResponse(options: {
+const BUILD_TOOL_STATUS_MAP = {
+	success: "ok",
+	error: "error",
+	info: "info",
+	warn: "warn",
+} as const satisfies Record<
+	"success" | "error" | "info" | "warn",
+	ToolResponseMeta["status"]
+>;
+
+type ToolResponseBaseOptions = {
 	status: "success" | "error" | "info" | "warn";
 	title: string;
 	statusMessage?: string;
 	textSections?: string[];
 	jsonData?: unknown;
-}): { content: Array<{ type: "text"; text: string }> } {
-	const emojiMap = {
-		success: "✅",
-		error: "❌",
-		info: "ℹ️",
-		warn: "⚠️",
-	} as const;
+	nextSteps?: string[];
+	jsonPreviewLimit?: number;
+	resourceLinks?: Array<Exclude<ToolContent, { type: "text"; text: string }>>;
+	tokenUsage?: ToolResponseMeta["tokenUsage"];
+	rateLimit?: ToolResponseMeta["rateLimit"];
+	truncated?: boolean;
+	omitMetaDetails?: boolean;
+};
 
-	const header = `${emojiMap[options.status]} ${options.title}${options.statusMessage || ""}`;
-	const content: Array<{ type: "text"; text: string }> = [
-		{ type: "text", text: header },
-	];
-	if (options.textSections) {
-		for (const section of options.textSections) {
-			content.push({ type: "text", text: section });
-		}
-	}
+function createToolResponse<T>(
+	options: ToolResponseBaseOptions,
+	data: T,
+): { response: ToolResponse<T>; jsonPreview?: string } {
+	const mappedStatus = BUILD_TOOL_STATUS_MAP[options.status] ?? "info";
+	const textSections = options.textSections ?? [];
+	const nextSteps = options.nextSteps ?? [];
+	let computedTruncated = options.truncated ?? false;
+	let jsonPreview: string | undefined;
+	const additionalText: string[] = [];
+
 	if (options.jsonData !== undefined) {
-		content.push({ type: "text", text: formatJsonForOutput(options.jsonData) });
+		const jsonOutput = formatJsonForOutput(
+			options.jsonData,
+			options.jsonPreviewLimit,
+		);
+		jsonPreview = jsonOutput.preview;
+		computedTruncated = computedTruncated || jsonOutput.truncated;
+		additionalText.push(jsonOutput.formatted);
 	}
-	return { content };
+
+	const meta: ToolResponseMeta = {
+		status: mappedStatus,
+		summary: `${options.title}${options.statusMessage ?? ""}`,
+		details: textSections,
+		nextSteps,
+		truncated: computedTruncated ? true : undefined,
+		tokenUsage: options.tokenUsage,
+		rateLimit: options.rateLimit,
+	};
+
+	const response = composeToolPayload<T>({
+		meta,
+		data,
+		additionalText: additionalText.length ? additionalText : undefined,
+		resourceLinks: options.resourceLinks,
+		omitMetaDetails: options.omitMetaDetails,
+		isError: mappedStatus === "error",
+	});
+
+	return { response, jsonPreview };
+}
+
+export function buildStructuredResponse<T>(
+	options: ToolResponseBaseOptions & { data: T },
+): ToolResponse<T> {
+	return createToolResponse(options, options.data).response;
+}
+
+export function buildToolResponse(
+	options: ToolResponseBaseOptions,
+): ToolResponse<DefaultToolResponseData> {
+	const textSections = options.textSections ?? [];
+	const nextSteps = options.nextSteps ?? [];
+	const data: DefaultToolResponseData = {
+		title: options.title,
+		statusMessage: options.statusMessage,
+		textSections,
+		nextSteps,
+		jsonData: options.jsonData,
+	};
+
+	const { response, jsonPreview } = createToolResponse(options, data);
+	if (jsonPreview !== undefined) {
+		response.structuredContent.data.jsonPreview = jsonPreview;
+	}
+	return response;
 }
 
 /**

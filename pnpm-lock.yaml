@@ -14,9 +14,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.4.0
         version: 1.15.0
-      edgedb:
-        specifier: ^2.0.1
-        version: 2.0.1
       fastify:
         specifier: ^5.4.0
         version: 5.4.0
@@ -916,11 +913,6 @@ packages:
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
-
-  edgedb@2.0.1:
-    resolution: {integrity: sha512-B/ErKdy+0iBlVjwXLZLOup+UEWL7sGPdae0WrKSpCgkQVQQlkrkM/Q/6/Jvd+CKHVPVa2jA90Rg2CcILwebVQg==}
-    engines: {node: '>= 18.0.0'}
-    hasBin: true
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
@@ -3073,12 +3065,6 @@ snapshots:
       call-bind-apply-helpers: 1.0.2
       es-errors: 1.3.0
       gopd: 1.2.0
-
-  edgedb@2.0.1:
-    dependencies:
-      gel: 2.1.1
-    transitivePeerDependencies:
-      - supports-color
 
   ee-first@1.1.1: {}
 

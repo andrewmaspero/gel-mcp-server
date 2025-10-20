@@ -2,9 +2,19 @@ const fs = require("fs-extra");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
+const SUPPRESS_STDOUT =
+	process.env.GEL_MCP_SUPPRESS_AUTOGEN_STDOUT === "1" ||
+	process.env.GEL_MCP_SUPPRESS_AUTOGEN_STDOUT === "true";
+
+const logInfo = (...args) => {
+	if (!SUPPRESS_STDOUT) {
+		console.log(...args);
+	}
+};
+
 async function runCommand(command, args, options = {}) {
 	return new Promise((resolve, reject) => {
-		console.log(`Running: ${command} ${args.join(" ")}`);
+		logInfo(`Running: ${command} ${args.join(" ")}`);
 		const child = spawn(command, args, {
 			stdio: ["inherit", "pipe", "pipe"],
 			...options,
@@ -16,7 +26,9 @@ async function runCommand(command, args, options = {}) {
 		if (child.stdout) {
 			child.stdout.on("data", (data) => {
 				stdout += data.toString();
-				process.stdout.write(data);
+				if (!SUPPRESS_STDOUT) {
+					process.stdout.write(data);
+				}
 			});
 		}
 
@@ -43,7 +55,7 @@ async function runCommand(command, args, options = {}) {
 
 async function testConnection(credentialFile) {
 	try {
-		console.log(`Testing connection for ${credentialFile}...`);
+		logInfo(`Testing connection for ${credentialFile}...`);
 
 		// Use a proper EdgeQL query to test connection
 		await runCommand("gel", [
@@ -65,7 +77,7 @@ async function testConnection(credentialFile) {
 
 async function generateQueryBuilder(credentialFile, instanceName) {
 	try {
-		console.log(
+		logInfo(
 			`Generating EdgeQL-JS query builder for instance: ${instanceName}`,
 		);
 
@@ -91,7 +103,7 @@ async function generateQueryBuilder(credentialFile, instanceName) {
 			throw new Error("Query builder generation did not create index.ts file");
 		}
 
-		console.log(
+		logInfo(
 			`✅ Query builder generated for ${instanceName} in ${outputDir}`,
 		);
 		return true;
@@ -120,7 +132,7 @@ async function generateQueryBuilder(credentialFile, instanceName) {
 
 async function createQueryBuilderIndex() {
 	try {
-		console.log("Creating query builder index file...");
+		logInfo("Creating query builder index file...");
 
 		const edgeqlJsDir = path.join("src", "edgeql-js");
 		const indexPath = path.join(edgeqlJsDir, "index.ts");
@@ -170,7 +182,7 @@ export function getAvailableInstances(): string[] {
 }
 `;
 			await fs.writeFile(indexPath, fallbackContent);
-			console.log("Created fallback query builder index");
+			logInfo("Created fallback query builder index");
 			return;
 		}
 
@@ -264,7 +276,7 @@ export { default } from './${defaultInstance}';`;
 		}
 
 		await fs.writeFile(indexPath, indexContent);
-		console.log(
+		logInfo(
 			`✅ Created query builder index with ${instanceDirs.length} instance(s)`,
 		);
 	} catch (error) {
@@ -274,12 +286,12 @@ export { default } from './${defaultInstance}';`;
 
 async function main() {
 	try {
-		console.log("🔍 Auto-generating EdgeQL query builders...");
+		logInfo("🔍 Auto-generating EdgeQL query builders...");
 
 		const credentialsDir = path.join(process.cwd(), "instance_credentials");
 
 		if (!fs.existsSync(credentialsDir)) {
-			console.log(
+			logInfo(
 				"No instance_credentials directory found. Creating fallback structure.",
 			);
 			await createQueryBuilderIndex();
@@ -290,12 +302,12 @@ async function main() {
 		const jsonFiles = files.filter((file) => file.endsWith(".json"));
 
 		if (jsonFiles.length === 0) {
-			console.log("No credential files found. Creating fallback structure.");
+			logInfo("No credential files found. Creating fallback structure.");
 			await createQueryBuilderIndex();
 			return;
 		}
 
-		console.log(
+		logInfo(
 			`Found ${jsonFiles.length} credential file(s): ${jsonFiles.join(", ")}`,
 		);
 
@@ -309,7 +321,7 @@ async function main() {
 			const instanceName = path.basename(file, ".json");
 			const credentialFile = path.join(credentialsDir, file);
 
-			console.log(`\n📡 Processing instance: ${instanceName}`);
+			logInfo(`\n📡 Processing instance: ${instanceName}`);
 
 			// Test connection first
 			const canConnect = await testConnection(credentialFile);
@@ -334,17 +346,17 @@ async function main() {
 		await createQueryBuilderIndex();
 
 		// Summary
-		console.log("\n📊 Summary:");
+		logInfo("\n📊 Summary:");
 		if (results.successful.length > 0) {
-			console.log(
+			logInfo(
 				`✅ Successfully generated for: ${results.successful.join(", ")}`,
 			);
 		}
 		if (results.failed.length > 0) {
-			console.log(`❌ Failed for: ${results.failed.join(", ")}`);
+			logInfo(`❌ Failed for: ${results.failed.join(", ")}`);
 		}
 
-		console.log("🎉 Auto-generation complete!");
+		logInfo("🎉 Auto-generation complete!");
 	} catch (error) {
 		console.error("Error in auto-generation script:", error);
 		// Still try to create a fallback structure

@@ -9,8 +9,16 @@ export function registerPrompts(server: McpServer) {
 			description:
 				"Deterministically set default instance/branch and verify connectivity before any other operation.",
 			argsSchema: {
-				instance: z.string().optional(),
-				branch: z.string().optional(),
+				instance: z
+					.string()
+					.describe(
+						"Instance name to prefer; if omitted a deterministic default will be chosen.",
+					)
+					.optional(),
+				branch: z
+					.string()
+					.describe("Branch name to use; defaults to 'main' if not provided.")
+					.optional(),
 			},
 		},
 		({ instance, branch }) => {
@@ -117,24 +125,43 @@ export function registerPrompts(server: McpServer) {
 			title: "EdgeQL Workflow (Validate → Execute)",
 			description:
 				"Enforce validation-first execution with safe argument handling and compact results.",
-			argsSchema: { query: z.string().describe("EdgeQL to run") },
+			argsSchema: {
+				query: z
+					.string()
+					.describe("EdgeQL query to validate and run with guidance."),
+			},
 		},
-		({ query }) => ({
-			messages: [
-				{
-					role: "user",
-					content: {
-						type: "text",
-						text: [
-							"Run EdgeQL safely:",
-							`- First: @[query action=\"validate\" query=\"${query.replace(/"/g, '\\"')}\"]`,
-							`- If valid: @[query action=\"run\" query=\"${query.replace(/"/g, '\\"')}\"]`,
-							"- If invalid: adjust schema/filters/args, re-validate before executing.",
-						].join("\n"),
+		({ query }) => {
+			if (!query) {
+				return {
+					messages: [
+						{
+							role: "user" as const,
+							content: {
+								type: "text" as const,
+								text: "Missing required parameter 'query'.",
+							},
+						},
+					],
+				};
+			}
+			return {
+				messages: [
+					{
+						role: "user",
+						content: {
+							type: "text",
+							text: [
+								"Run EdgeQL safely:",
+								`- First: @[query action=\"validate\" query=\"${query.replace(/"/g, '\\"')}\"]`,
+								`- If valid: @[query action=\"run\" query=\"${query.replace(/"/g, '\\"')}\"]`,
+								"- If invalid: adjust schema/filters/args, re-validate before executing.",
+							].join("\n"),
+						},
 					},
-				},
-			],
-		}),
+				],
+			};
+		},
 	);
 
 	// Recovery playbook
@@ -172,12 +199,33 @@ export function registerPrompts(server: McpServer) {
 			description:
 				"Produce the minimal, correct steps to validate then execute a single EdgeQL query using consolidated tools.",
 			argsSchema: {
-				query: z.string(),
-				instance: z.string().optional(),
-				branch: z.string().optional(),
+				query: z.string().describe("EdgeQL query to validate and execute."),
+				instance: z
+					.string()
+					.describe(
+						"Optional instance override; otherwise defaults/auto-selection apply.",
+					)
+					.optional(),
+				branch: z
+					.string()
+					.describe("Optional branch override; defaults to 'main' if unset.")
+					.optional(),
 			},
 		},
 		({ query, instance, branch }) => {
+			if (!query) {
+				return {
+					messages: [
+						{
+							role: "user" as const,
+							content: {
+								type: "text" as const,
+								text: "Missing required parameter 'query'.",
+							},
+						},
+					],
+				};
+			}
 			const baseValidate = `@[query action=\"validate\" query=\"${query.replace(/"/g, '\\\\"')}\"]`;
 			const baseRun = `@[query action=\"run\" query=\"${query.replace(/"/g, '\\\\"')}\"]`;
 			const withConn = (s: string) =>
@@ -265,19 +313,36 @@ export function registerPrompts(server: McpServer) {
 			title: "Search Docs (Guided)",
 			description:
 				"Generate a call to search local documentation with context windows.",
-			argsSchema: { term: z.string() },
+			argsSchema: {
+				term: z.string().describe("Search term(s) to find in local docs."),
+			},
 		},
-		({ term }) => ({
-			messages: [
-				{
-					role: "user",
-					content: {
-						type: "text",
-						text: `Use: @[docs action=\"search\" term=\"${term.replace(/"/g, '\\\\"')}\"].`,
+		({ term }) => {
+			if (!term) {
+				return {
+					messages: [
+						{
+							role: "user" as const,
+							content: {
+								type: "text" as const,
+								text: "Missing required parameter 'term'.",
+							},
+						},
+					],
+				};
+			}
+			return {
+				messages: [
+					{
+						role: "user",
+						content: {
+							type: "text",
+							text: `Use: @[docs action=\"search\" term=\"${term.replace(/"/g, '\\\\"')}\"].`,
+						},
 					},
-				},
-			],
-		}),
+				],
+			};
+		},
 	);
 
 	// Suggest Context7/Gel search terms from a natural goal
@@ -295,10 +360,26 @@ export function registerPrompts(server: McpServer) {
 					),
 				intent: z
 					.enum(["query", "schema", "both"]) // optional hint to bias suggestions
+					.describe(
+						"Hint what you need help with: query topics, schema topics, or both.",
+					)
 					.optional(),
 			},
 		},
 		({ goal, intent }) => {
+			if (!goal) {
+				return {
+					messages: [
+						{
+							role: "user" as const,
+							content: {
+								type: "text" as const,
+								text: "Missing required parameter 'goal'.",
+							},
+						},
+					],
+				};
+			}
 			const safeGoal = goal.replace(/"/g, '\\"');
 			const baseQueryTerms = [
 				"Overview",

@@ -2,9 +2,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { findProjectRoot } from "./database.js";
-import { createLogger } from "./logger.js";
 
-const logger = createLogger("config");
+// Bootstrap logger to avoid circular dependency: config -> logger -> config
+const logger = {
+	info: (message: string, meta?: Record<string, unknown>) =>
+		console.log(
+			`[config] INFO: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
+		),
+	warn: (message: string, meta?: Record<string, unknown>) =>
+		console.warn(
+			`[config] WARN: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
+		),
+	error: (message: string, meta?: Record<string, unknown>) =>
+		console.error(
+			`[config] ERROR: ${message}${meta ? ` ${JSON.stringify(meta)}` : ""}`,
+		),
+};
 
 // Configuration schema
 const ConfigSchema = z.object({
