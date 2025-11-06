@@ -1,10 +1,30 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import winston from "winston";
 import { findProjectRoot } from "./database.js";
-import { createLogger } from "./logger.js";
 
-const logger = createLogger("config");
+// Bootstrap logger to avoid circular dependency: config -> logger -> config
+const bootstrapLogger = winston.createLogger({
+	level: process.env.LOG_LEVEL ?? "info",
+	format: winston.format.combine(
+		winston.format.timestamp({ format: "YYYY-MM-DDTHH:mm:ss.SSSZ" }),
+		winston.format.printf(({ timestamp, level, message, ...meta }) => {
+			const metaString =
+				meta && Object.keys(meta).length > 0
+					? ` ${JSON.stringify(meta)}`
+					: "";
+			return `[${timestamp}] ${level}: ${message}${metaString}`;
+		}),
+	),
+	transports: [
+		new winston.transports.Stream({
+			stream: process.stderr,
+		}),
+	],
+});
+
+const logger = bootstrapLogger.child({ component: "config" });
 
 // Configuration schema
 const ConfigSchema = z.object({
@@ -136,13 +156,13 @@ const ConfigSchema = z.object({
 			level: z.enum(["error", "warn", "info", "debug"]).default("info"),
 			maxFiles: z.number().default(5),
 			maxSize: z.number().default(5242880), // 5MB
-			enableConsole: z.boolean().default(true),
+			enableConsole: z.boolean().default(false),
 		})
 		.default(() => ({
 			level: "info" as const,
 			maxFiles: 5,
 			maxSize: 5242880,
-			enableConsole: true,
+			enableConsole: false,
 		})),
 
 	// Tool settings
@@ -168,6 +188,17 @@ const ConfigSchema = z.object({
 				maxQueryLength: 50000,
 				allowedSchemaPatterns: ["^[a-zA-Z_][a-zA-Z0-9_]*$"],
 			},
+		})),
+
+	// Sampling settings
+	sampling: z
+		.object({
+			enabled: z.boolean().default(false),
+			maxTokens: z.number().default(200),
+		})
+		.default(() => ({
+			enabled: false,
+			maxTokens: 200,
 		})),
 });
 
@@ -271,6 +302,12 @@ export function loadConfig(): Config {
 				parseBool(process.env.GEL_LOG_CONSOLE) ??
 				(process.env.NODE_ENV === "production" ? false : undefined),
 		},
+		sampling: {
+			enabled: parseBool(process.env.GEL_SAMPLING_ENABLED),
+			maxTokens: process.env.GEL_SAMPLING_MAX_TOKENS
+				? parseInt(process.env.GEL_SAMPLING_MAX_TOKENS, 10)
+				: undefined,
+		},
 	};
 
 	// Remove undefined values
@@ -355,18 +392,22 @@ export function createSampleConfig(): void {
 				executeToolsLimit: 10,
 			},
 		},
-		logging: {
-			level: "info",
-			maxFiles: 5,
-			maxSize: 5242880,
-			enableConsole: true,
-		},
+	logging: {
+		level: "info",
+		maxFiles: 5,
+		maxSize: 5242880,
+		enableConsole: false,
+	},
 		tools: {
 			validation: {
 				strictMode: true,
 				maxQueryLength: 50000,
 				allowedSchemaPatterns: ["^[a-zA-Z_][a-zA-Z0-9_]*$"],
 			},
+		},
+		sampling: {
+			enabled: false,
+			maxTokens: 200,
 		},
 	};
 

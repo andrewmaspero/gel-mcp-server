@@ -23,3 +23,13 @@ gel-mcp-config.json
 
 # Keep example configuration
 !gel-mcp-config.json.example
+.specstory
+.github/workflows
+mcp-server.log
+.serena
+.cursorindexingignore
+AGENTS.md
+
+# Git worktrees (Crystal)
+/worktrees/
+/worktree-*/

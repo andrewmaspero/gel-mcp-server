@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+
+description: "Promptfoo MCP smoke tests for gel-mcp-server"
+
+prompts:
+  - "[SMOKE] Execute {{action}} for term '{{term}}'"
+
+providers:
+  - id: file://./providers/gel-mcp-smoke-provider.mjs
+    label: gel-mcp-smoke
+
+# Each test delegates to the custom provider, which establishes an MCP
+# connection to the local gel-mcp-server instance and returns structured JSON
+# capturing the tool outputs under test. Assertions operate on the JSON string
+# returned by the provider to keep the setup deterministic and hermetic.
+tests:
+  - description: Tool registry should expose connection helper suite
+    vars:
+      action: list-tools
+    assert:
+      - type: is-json
+      - type: contains
+        value: '"names"'
+      - type: contains
+        value: '"connection.auto"'
+
+  - description: Resource registry should expose connection state resource
+    vars:
+      action: list-resources
+    assert:
+      - type: is-json
+      - type: contains
+        value: '"resource://connection-state/current"'
+      - type: contains
+        value: '"count": 1'
+      - type: contains
+        value: '"names"'

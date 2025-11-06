@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerConnection } from "./connection.js";
+import { registerConnectionTools } from "./connection.js";
 import { registerDocs } from "./docs.js";
 import { registerPrompts } from "./prompts.js";
 import { registerQuery } from "./query.js";
@@ -7,7 +7,7 @@ import { registerSchema } from "./schema.js";
 
 export function registerAllTools(server: McpServer) {
 	// Consolidated tools
-	registerConnection(server);
+	registerConnectionTools(server);
 	registerSchema(server);
 	registerQuery(server);
 	registerDocs(server);

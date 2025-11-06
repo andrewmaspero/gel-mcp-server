@@ -1,0 +1,76 @@
+[
+  {
+    "file": "src/tools/cache.ts",
+    "toolName": "cache",
+    "calls": [
+      {
+        "line": 22,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 29,
+        "column": 11,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 52,
+        "column": 12,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 57,
+        "column": 11,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/connection/common.ts",
+    "toolName": "common",
+    "calls": [
+      {
+        "line": 37,
+        "column": 9,
+        "functionName": "toToolResult"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/connection/legacy.ts",
+    "toolName": "legacy",
+    "calls": [
+      {
+        "line": 70,
+        "column": 12,
+        "functionName": "registerTool"
+      }
+    ]
+  },
+  {
+    "file": "src/tools/query.ts",
+    "toolName": "query",
+    "calls": []
+  },
+  {
+    "file": "src/tools/schema.ts",
+    "toolName": "schema",
+    "calls": []
+  },
+  {
+    "file": "src/tools/session-management.ts",
+    "toolName": "session-management",
+    "calls": [
+      {
+        "line": 33,
+        "column": 11,
+        "functionName": "registerTool"
+      },
+      {
+        "line": 51,
+        "column": 11,
+        "functionName": "registerTool"
+      }
+    ]
+  }
+]

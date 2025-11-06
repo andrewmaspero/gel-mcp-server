@@ -152,6 +152,13 @@ The server includes an automated schema generation system that:
 - `npm run generate-schemas`: Manually run schema generation
 - `npm run build`: Automatically runs schema generation before compilation
 
+### Silent Mode for MCP Hosts
+
+When the schema generator runs inside the MCP server, set
+`GEL_MCP_SUPPRESS_AUTOGEN_STDOUT=1` (or `true`) to suppress its stdout logs.
+Warnings and errors still emit on stderr so failures remain visible, but the
+stdio transport stays clean for MCP responses.
+
 ### Generated Structure
 
 ```
@@ -208,15 +215,15 @@ The `gel` CLI will automatically generate the correct JSON format with all neces
 
 Set default instance and branch for your session:
 ```
-@[set-default-connection instance="production" branch="main"]
-@[get-default-connection]
+@[connection action="set" instance="production" branch="main"]
+@[connection action="get"]
 ```
 
 ### 3. Tool Parameters
 
-All tools accept optional `instance` and `branch` parameters:
+All consolidated tools accept optional `instance` and `branch` parameters:
 ```
-@[execute-edgeql instance="staging" branch="feature-x" query="SELECT count(User)"]
+@[query action="run" instance="staging" branch="feature-x" query="SELECT count(User)"]
 ```
 
 **Connection Priority:**
@@ -226,31 +233,21 @@ Tool Parameter > Session Default > Project Default
 
 ## 🛠 Available Tools
 
-### Instance & Branch Management
-- `list-instances`: Auto-discovers and lists all available instances
-- `list-branches`: Lists all branches for a specific instance
-- `switch-branch`: Switches the active branch for an instance
-- `list-credentials`: Lists available credential files
-- `set-default-connection`: Sets session defaults
-- `get-default-connection`: Shows current session defaults
+### Connection & Session Management
+- `connection`: Single entry point for listing instances/credentials/branches, auto-selecting defaults, switching branches, and reading current settings (`action` = `auto`, `listInstances`, `listBranches`, `set`, `get`, `switchBranch`).
 
-### Schema & Querying
-- `get-schema`: Dumps the entire schema as text
-- `list-schema-types`: Lists all object types in the schema
-- `describe-schema`: Detailed information about a specific schema type
-- `execute-edgeql`: Executes raw EdgeQL queries
-- `validate-query`: Validates EdgeQL syntax without execution
-- `execute-typescript`: Executes TypeScript with injected Gel client
+### Schema Exploration
+- `schema`: Handles overview, type listing, describing a specific type, and regenerating query builders (`action` = `overview`, `types`, `describe`, `refresh`).
 
-### Code Generation
-- `refresh-schema`: Regenerates EdgeQL query builder files for a specific instance
+### Query Workflow
+- `query`: Validates or executes EdgeQL snippets, runs queries from files, and supports parameterized execution with sensible LIMIT defaults (`action` = `validate`, `run`, `file`).
 
-### Documentation & Utilities
-- `search_gel_docs`: Searches local Gel documentation (supports `match_all_terms` and `context_lines`)
-- `debug-filesystem`: Debug tool for troubleshooting file system issues
-- `prompt-code-review`: Generates code review prompts
-- `prompt-search-docs`: Generates documentation search tool calls
-- `prompt-run-edgeql`: Generates EdgeQL execution tool calls
+### Documentation & Guidance
+- `docs`: Searches the bundled Gel documentation (`action` = `search`, with `term`, `context_lines`, `match_all_terms`).
+- `prompts`: Provides structured prompt templates such as `quickstart`, `bootstrap-connection`, `schema-exploration`, and `edgeql-workflow` to guide tool usage.
+
+### Execution Utilities
+- `execute-typescript`: Runs TypeScript snippets in a sandbox with injected Gel client/context helpers; ideal for scripted maintenance or diagnostics.
 
 ---
 
@@ -395,16 +392,18 @@ npm run build            # Recompile the project
 
 ### Debugging
 
-Use the debug tool to troubleshoot issues:
+Use consolidated tools to confirm environment and connectivity:
 ```
-@[debug-filesystem]
+@[connection action="get"]
+@[connection action="listInstances"]
+@[schema action="overview"]
 ```
 
-This shows:
-- Current working directory
-- Detected project root
-- Available credential files
-- File system status
+- `connection.get` confirms defaults and recent changes
+- `connection.listInstances` verifies credential discovery
+- `schema.overview` validates the active connection and surfaces schema access errors
+
+If further investigation is needed, check `mcp-server.log` or run `pnpm start` from the project root to observe runtime output.
 
 ---
 
@@ -463,8 +462,8 @@ Use the MCP extension with similar configuration for VS Code support.
    - Ensure each instance has its own directory
 
 4. **Working directory issues**
-   - Use the `debug-filesystem` tool to check paths
-   - Ensure MCP server is configured with correct `cwd`
+   - Call `@[connection action="listInstances"]` to verify credential discovery from the current `cwd`
+   - Ensure the MCP server is launched with the repository root as its working directory
 
 5. **Connection failures**
    - Verify credential file format
@@ -474,7 +473,7 @@ Use the MCP extension with similar configuration for VS Code support.
 ### Getting Help
 
 If you encounter issues:
-1. Run `@[debug-filesystem]` to check the environment
+1. Run `@[connection action="get"]` and `@[connection action="listInstances"]` to confirm defaults and discovery
 2. Check the credential files format
 3. Verify database connectivity with `gel instance list`
 4. Review the server logs for detailed error messages

@@ -6,6 +6,7 @@ import { ValidationError } from "../errors.js";
 import { createLogger } from "../logger.js";
 import { safeJsonStringify } from "../utils.js";
 import { checkRateLimit, validateTypeScriptCode } from "../validation.js";
+import { runElicitation } from "../elicitation.js";
 
 const logger = createLogger("executeTypescript");
 
@@ -182,11 +183,76 @@ export function registerExecuteTypescript(server: McpServer) {
 				use_gel_client: z.boolean().optional(),
 			},
 		},
-		async (args) => {
-			const config = getConfig();
+	async (args) => {
+		const config = getConfig();
 
-			// Load isolated-vm if not already loaded
-			await _loadIsolatedVM();
+		// Load isolated-vm if not already loaded
+		await _loadIsolatedVM();
+
+		let executionReason: string | undefined;
+		if (!args.confirm) {
+			const elicitation = await runElicitation(server, {
+				message:
+					"Execute arbitrary TypeScript inside the MCP server. Review the code for safety and confirm before proceeding.",
+				requestedSchema: {
+					type: "object",
+					additionalProperties: false,
+					required: ["confirm"],
+					properties: {
+						confirm: {
+							type: "boolean",
+							title: "Confirm TypeScript Execution",
+							description:
+								"Set to true if you are certain the code is safe to run.",
+							default: false,
+						},
+						reason: {
+							type: "string",
+							title: "Reason (optional)",
+							description:
+								"Provide context for auditing why this execution is necessary.",
+							minLength: 0,
+							maxLength: 200,
+						},
+					},
+				},
+			});
+			if (!elicitation) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "❌ TypeScript execution requires interactive confirmation. Re-run with confirm=true once approved.",
+						},
+					],
+				};
+			}
+			if (elicitation.action !== "accept" || !elicitation.content) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "ℹ️ TypeScript execution cancelled.",
+						},
+					],
+				};
+			}
+			const response = elicitation.content as {
+				confirm?: boolean;
+				reason?: string;
+			};
+			if (!response.confirm) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "ℹ️ TypeScript execution cancelled.",
+						},
+					],
+				};
+			}
+			executionReason = response.reason?.trim() || undefined;
+		}
 
 			try {
 				// Check if TypeScript execution is enabled
@@ -281,25 +347,37 @@ export function registerExecuteTypescript(server: McpServer) {
 					}
 				}
 
-				return {
-					content: [
-						{
-							type: "text",
-							text: `✅ Code executed successfully (${executionMethod}):`,
-						},
-						{
-							type: "text",
-							text:
-								result !== undefined
-									? `Result: ${safeJsonStringify(result)}`
-									: "No result returned",
-						},
-						{
-							type: "text",
-							text: `Execution time limit: ${timeout}ms, Memory limit: ${memoryLimit}MB`,
-						},
-					],
-				};
+			return {
+				structuredContent: {
+					meta: {
+						status: "ok",
+						summary: `TypeScript execution completed (${executionMethod})`,
+						details: [
+							executionReason
+								? `Reason: ${executionReason}`
+								: `Executed with timeout ${timeout}ms and memory limit ${memoryLimit}MB`,
+						],
+						nextSteps: [
+							"Capture results via resource link if output is large.",
+						],
+					},
+					data: {
+						result,
+						executionMethod,
+						timeoutMs: timeout,
+						memoryLimitMB: memoryLimit,
+					},
+				},
+				content: [
+					{
+						type: "text",
+						text:
+							result !== undefined
+								? `Result: ${safeJsonStringify(result)}`
+								: "No result returned",
+					},
+				],
+			};
 			} catch (error: unknown) {
 				if (error instanceof ValidationError) {
 					return {

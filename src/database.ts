@@ -5,7 +5,10 @@ import { createLogger } from "./logger.js";
 import { getDefaultConnection } from "./session.js";
 
 const logger = createLogger("database");
-let cachedProjectRoot: string | null = null;
+// Use var to avoid TDZ issues during circular imports (config -> database -> logger -> config)
+// When findProjectRoot() is invoked before this module finishes evaluating,
+// reading a `let` would throw. `var` is hoisted and initialized to undefined safely.
+var cachedProjectRoot: string | null = null;
 
 export function findProjectRoot(): string {
 	if (cachedProjectRoot) return cachedProjectRoot;

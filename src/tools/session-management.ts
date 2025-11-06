@@ -1,9 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { emitConnectionChanged } from "../events.js";
-import { updateSchemaWatcher } from "../schemaWatcher.js";
-import { getDefaultConnection, setDefaultConnection } from "../session.js";
-import { buildToolResponse, validateConnectionArgs } from "../utils.js";
+import {
+	getConnectionOutputSchema,
+	handleGetConnection,
+	handleSetConnection,
+	type ToolResult,
+} from "./connection/common.js";
 
 export function registerSessionManagement(server: McpServer) {
 	server.registerTool(
@@ -16,24 +18,12 @@ export function registerSessionManagement(server: McpServer) {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
 			},
+			outputSchema: getConnectionOutputSchema(),
 		},
-		async (args) => {
-			// Validate optional inputs
-			validateConnectionArgs(args);
-			setDefaultConnection(args.instance, args.branch);
-			const currentDefaults = getDefaultConnection();
-
-			// Update the schema watcher for the new connection
-			updateSchemaWatcher();
-			emitConnectionChanged({
-				instance: currentDefaults.defaultInstance,
-				branch: currentDefaults.defaultBranch,
-			});
-
-			return buildToolResponse({
-				status: "success",
-				title: "Default connection updated",
-				jsonData: currentDefaults,
+		async (args): Promise<ToolResult> => {
+			return handleSetConnection({
+				instance: args.instance,
+				branch: args.branch,
 			});
 		},
 	);
@@ -45,14 +35,10 @@ export function registerSessionManagement(server: McpServer) {
 			description:
 				"Retrieves the currently configured default database instance and branch for the session.",
 			inputSchema: {},
+			outputSchema: getConnectionOutputSchema(),
 		},
-		async () => {
-			const currentDefaults = getDefaultConnection();
-			return buildToolResponse({
-				status: "info",
-				title: "Current default connection",
-				jsonData: currentDefaults,
-			});
+		async (): Promise<ToolResult> => {
+			return handleGetConnection();
 		},
 	);
 }

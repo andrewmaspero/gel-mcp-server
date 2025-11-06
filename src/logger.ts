@@ -1,7 +1,9 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import winston from "winston";
 import { getConfig } from "./config.js";
+import { getCurrentRequestId } from "./requestContext.js";
 
 // Ensure logs directory exists
 const logsDir = path.join(process.cwd(), "logs");
@@ -12,7 +14,6 @@ if (!fs.existsSync(logsDir)) {
 // Custom format for console output
 const consoleFormat = winston.format.combine(
 	winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-	winston.format.colorize({ all: true }),
 	winston.format.printf(({ timestamp, level, message, ...meta }) => {
 		const metaString =
 			Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : "";
@@ -61,28 +62,44 @@ const logger = winston.createLogger({
 	],
 });
 
-// Add console transport in development
-if (cfg.logging.enableConsole && process.env.NODE_ENV !== "production") {
+// Add console transport when explicitly enabled
+if (cfg.logging.enableConsole) {
 	logger.add(
 		new winston.transports.Console({
+			stderrLevels: ["error", "warn", "info", "debug"],
 			format: consoleFormat,
 		}),
 	);
 }
 
+function withRequestId(
+	meta?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const requestId = getCurrentRequestId();
+	if (!meta && !requestId) {
+		return undefined;
+	}
+
+	return {
+		requestId: meta?.requestId ?? requestId ?? randomUUID(),
+		...(meta ?? {}),
+	};
+}
+
 // Helper function to log with context
 export function createLogger(context: string) {
+	const contextualLogger = logger.child({ context });
 	return {
 		error: (message: string, meta?: Record<string, unknown>) =>
-			logger.error(message, { context, ...meta }),
+			contextualLogger.error(message, withRequestId(meta)),
 		warn: (message: string, meta?: Record<string, unknown>) =>
-			logger.warn(message, { context, ...meta }),
+			contextualLogger.warn(message, withRequestId(meta)),
 		info: (message: string, meta?: Record<string, unknown>) =>
-			logger.info(message, { context, ...meta }),
+			contextualLogger.info(message, withRequestId(meta)),
 		debug: (message: string, meta?: Record<string, unknown>) =>
-			logger.debug(message, { context, ...meta }),
+			contextualLogger.debug(message, withRequestId(meta)),
 		log: (level: string, message: string, meta?: Record<string, unknown>) =>
-			logger.log(level, message, { context, ...meta }),
+			contextualLogger.log(level, message, withRequestId(meta)),
 	};
 }
 
