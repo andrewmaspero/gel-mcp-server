@@ -89,7 +89,7 @@ export default class GelMcpSmokeProvider {
 		return "gel-mcp-smoke";
 	}
 
-	async callApi(prompt, context = { vars: {} }) {
+	async callApi(_prompt, context = { vars: {} }) {
 		const vars = context?.vars ?? {};
 		const action = typeof vars.action === "string" ? vars.action : "list-tools";
 		try {

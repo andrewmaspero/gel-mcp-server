@@ -18,7 +18,23 @@ describe("collectBuildToolResponseCalls", () => {
 	expect(summary).toMatchInlineSnapshot(`
 [
   {
-    "callCount": 9,
+    "callCount": 4,
+    "file": "src/tools/cache.ts",
+  },
+  {
+    "callCount": 1,
+    "file": "src/tools/connection/common.ts",
+  },
+  {
+    "callCount": 5,
+    "file": "src/tools/docs.ts",
+  },
+  {
+    "callCount": 8,
+    "file": "src/tools/query.ts",
+  },
+  {
+    "callCount": 2,
     "file": "src/tools/schema.ts",
   },
 ]

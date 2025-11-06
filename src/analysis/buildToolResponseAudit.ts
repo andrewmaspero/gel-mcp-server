@@ -21,11 +21,11 @@ interface CollectOptions {
 function isBuildToolResponseCall(node: ts.CallExpression): boolean {
 	const expression = node.expression;
 	if (ts.isIdentifier(expression)) {
-		return expression.text === "buildToolResponse";
+		return expression.text === "buildToolResponse" || expression.text === "buildStructuredResponse";
 	}
 
 	if (ts.isPropertyAccessExpression(expression)) {
-		return expression.name.text === "buildToolResponse";
+		return expression.name.text === "buildToolResponse" || expression.name.text === "buildStructuredResponse";
 	}
 
 	return false;
