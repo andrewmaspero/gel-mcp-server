@@ -1,0 +1,1 @@
+export const MAX_INLINE_RESPONSE_CHARS = 8000;

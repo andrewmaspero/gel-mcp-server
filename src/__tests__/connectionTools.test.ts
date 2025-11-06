@@ -28,6 +28,11 @@ type RegisteredTool = {
 
 const createMockServer = () => {
 	const tools = new Map<string, RegisteredTool>();
+	const elicitInput = jest.fn().mockResolvedValue({
+		action: "accept",
+		content: { confirm: true },
+	});
+	const coreServer = { elicitInput };
 	const server = {
 		registerTool: (
 			name: string,
@@ -36,8 +41,9 @@ const createMockServer = () => {
 		) => {
 			tools.set(name, { meta, handler });
 		},
+		server: coreServer,
 	} as unknown as McpServer;
-	return { server, tools };
+	return { server, tools, elicitInput };
 };
 
 describe("registerConnection", () => {
@@ -45,6 +51,14 @@ describe("registerConnection", () => {
 
 	beforeEach(() => {
 		spies.push(jest.spyOn(common, "enforceRateLimit").mockImplementation(() => {}));
+		spies.push(
+			jest
+				.spyOn(common, "getCurrentConnection")
+				.mockReturnValue({
+					defaultInstance: "demo",
+					defaultBranch: "main",
+				} as ReturnType<typeof common.getCurrentConnection>),
+		);
 		spies.push(
 			jest
 				.spyOn(common, "handleAutoConnection")
@@ -107,7 +121,7 @@ describe("registerConnection", () => {
 	});
 
 	it("delegates handlers to shared implementations with rate limiting", async () => {
-		const { server, tools } = createMockServer();
+		const { server, tools, elicitInput } = createMockServer();
 		registerConnection(server);
 
 		const auto = tools.get("connection.auto");
@@ -132,12 +146,27 @@ describe("registerConnection", () => {
 		expect(common.handleListBranches).toHaveBeenCalledWith("demo");
 
 		await legacy?.handler({ action: "switchBranch", instance: "demo", branch: "feature" });
-		expect(common.handleSwitchBranch).toHaveBeenCalledWith({ instance: "demo", branch: "feature" });
+		expect(common.handleSwitchBranch).toHaveBeenCalledWith({
+			instance: "demo",
+			branch: "feature",
+			confirmed: true,
+			reason: undefined,
+		});
 
 		await legacy?.handler({ action: "set", instance: "demo", branch: "main" });
 		expect(common.handleSetConnection).toHaveBeenCalledWith({ instance: "demo", branch: "main" });
 
 		await legacy?.handler({});
 		expect(common.handleAutoConnection).toHaveBeenCalledTimes(2);
+
+		const switchIntent = tools.get("connection.switch-branch");
+		await switchIntent?.handler({ branch: "feature" });
+		expect(elicitInput).toHaveBeenCalledTimes(1);
+		expect(common.handleSwitchBranch).toHaveBeenCalledWith({
+			instance: "demo",
+			branch: "feature",
+			confirmed: true,
+			reason: undefined,
+		});
 	});
 });

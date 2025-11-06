@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import type { ConnectionAction } from "../../types/connection.js";
 import {
 	enforceRateLimit,
 	handleAutoConnection,
@@ -9,9 +10,10 @@ import {
 	handleListInstances,
 	handleSetConnection,
 	handleSwitchBranch,
+	createConnectionError,
+	getConnectionOutputSchema,
 	type ToolResult,
 } from "./common.js";
-import { buildToolResponse } from "../../utils.js";
 
 const TOOL_NAME = "connection";
 
@@ -48,6 +50,7 @@ const legacyHandler = async (args: Record<string, unknown>): Promise<ToolResult>
 				return handleSwitchBranch({
 					instance: args.instance as string | undefined,
 					branch: args.branch as string | undefined,
+					confirmed: true,
 				});
 			case "set":
 				return handleSetConnection({
@@ -58,13 +61,12 @@ const legacyHandler = async (args: Record<string, unknown>): Promise<ToolResult>
 				return handleAutoConnection();
 		}
 	} catch (error: unknown) {
-		return (buildToolResponse({
-			status: "error",
-			title: "Connection tool error",
-			textSections: [
-				error instanceof Error ? error.message : String(error),
-			],
-		}) as unknown) as ToolResult;
+		return createConnectionError(
+			action as ConnectionAction,
+			"Connection tool error",
+			[error instanceof Error ? error.message : String(error)],
+			"LEGACY_UNHANDLED_ERROR",
+		);
 	}
 };
 
@@ -77,6 +79,7 @@ export function registerLegacyConnection(server: McpServer) {
 			description:
 				"Legacy consolidated connection management. Prefer the intent-level tools (`connection.auto`, `connection.get`, etc.).",
 			inputSchema,
+			outputSchema: getConnectionOutputSchema(),
 		},
 		legacyHandler as unknown as Parameters<McpServer["registerTool"]>[2],
 	);

@@ -50,84 +50,12 @@
   {
     "file": "src/tools/query.ts",
     "toolName": "query",
-    "calls": [
-      {
-        "line": 37,
-        "column": 12,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 53,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 62,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 69,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 77,
-        "column": 13,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 85,
-        "column": 13,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 100,
-        "column": 13,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 122,
-        "column": 12,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 131,
-        "column": 12,
-        "functionName": "registerTool"
-      }
-    ]
+    "calls": []
   },
   {
     "file": "src/tools/schema.ts",
     "toolName": "schema",
-    "calls": [
-      {
-        "line": 96,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 141,
-        "column": 15,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 153,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 194,
-        "column": 14,
-        "functionName": "registerTool"
-      },
-      {
-        "line": 208,
-        "column": 14,
-        "functionName": "registerTool"
-      }
-    ]
+    "calls": []
   },
   {
     "file": "src/tools/session-management.ts",

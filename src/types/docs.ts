@@ -2,22 +2,28 @@ import { z } from "zod";
 import { ToolStatusSchema } from "./mcp.js";
 
 export const DocsMatchSchema = z.object({
-	chunkId: z.number().int().nonnegative(),
-	startLine: z.number().int().nonnegative(),
-	endLine: z.number().int().nonnegative(),
-	score: z.number().min(0).max(100).optional(),
-	excerpt: z.string(),
+	id: z.number(),
+	filePath: z.string(),
+	startLine: z.number(),
+	endLine: z.number(),
+	score: z.number(),
+	snippet: z.string(),
+	truncated: z.boolean().optional(),
+	resourceUri: z.string().optional(),
+});
+
+export const DocsSearchResultSchema = z.object({
+	term: z.string(),
+	totalMatches: z.number(),
+	returned: z.number(),
+	matches: z.array(DocsMatchSchema),
 });
 
 export const DocsResponseSchema = z.object({
-	action: z.literal("search"),
 	status: ToolStatusSchema,
-	term: z.string(),
-	totalMatches: z.number().int().nonnegative(),
-	returned: z.number().int().nonnegative(),
-	matches: z.array(DocsMatchSchema),
-	notes: z.array(z.string()).default([]),
-	errorCode: z.string().optional(),
+	message: z.string(),
+	result: DocsSearchResultSchema,
 });
 
-export type DocsResponse = z.infer<typeof DocsResponseSchema>;
+export type DocsMatch = z.infer<typeof DocsMatchSchema>;
+export type DocsSearchResult = z.infer<typeof DocsSearchResultSchema>;

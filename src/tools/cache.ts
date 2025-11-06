@@ -1,7 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { deleteByPrefix, getCached } from "../cache.js";
-import { buildToolResponse } from "../utils.js";
+import { buildStructuredResponse } from "../utils.js";
+import {
+	CacheClearResultSchema,
+	CachePeekResultSchema,
+} from "../types/cache.js";
 
 export function registerCacheTools(server: McpServer) {
 	server.registerTool(
@@ -14,21 +18,41 @@ export function registerCacheTools(server: McpServer) {
 				instance: z.string().optional(),
 				branch: z.string().optional(),
 			},
+			outputSchema: CacheClearResultSchema.shape,
 		},
 		async (args) => {
 			if (args.instance) {
 				deleteByPrefix(`schema:get-schema:${args.instance}:`);
 				deleteByPrefix(`schema:list-schema-types:${args.instance}:`);
-				return buildToolResponse({
+				return buildStructuredResponse({
 					status: "success",
 					title: `Cleared schema cache for instance '${args.instance}'`,
+					textSections: [
+						"Removed cached schema overview and type listings for the specified instance.",
+					],
+					data: {
+						status: "ok",
+						message: "Schema cache cleared for instance",
+						scope: {
+							instance: args.instance,
+							branch: args.branch,
+						},
+					},
 				});
 			}
 			deleteByPrefix("schema:get-schema:");
 			deleteByPrefix("schema:list-schema-types:");
-			return buildToolResponse({
+			return buildStructuredResponse({
 				status: "success",
 				title: "Cleared all schema cache",
+				textSections: [
+					"Global schema cache entries have been removed.",
+				],
+				data: {
+					status: "ok",
+					message: "Cleared entire schema cache",
+					scope: {},
+				},
 			});
 		},
 	);
@@ -44,20 +68,35 @@ export function registerCacheTools(server: McpServer) {
 				instance: z.string(),
 				branch: z.string().optional(),
 			},
+			outputSchema: CachePeekResultSchema.shape,
 		},
 		async (args) => {
 			const key = `schema:${args.kind}:${args.instance}:${args.branch ?? ""}`;
 			const value = getCached<unknown>(key);
 			if (value === undefined) {
-				return buildToolResponse({
+				return buildStructuredResponse({
 					status: "info",
 					title: `No cache entry for ${key}`,
+					textSections: [
+						"The requested key is not present in the in-memory schema cache.",
+					],
+					data: {
+						status: "info",
+						key,
+						hit: false,
+					},
 				});
 			}
-			return buildToolResponse({
+			return buildStructuredResponse({
 				status: "success",
 				title: `Cache hit for ${key}`,
 				jsonData: value,
+				data: {
+					status: "ok",
+					key,
+					hit: true,
+					value,
+				},
 			});
 		},
 	);

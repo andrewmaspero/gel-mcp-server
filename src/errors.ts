@@ -198,6 +198,77 @@ export class ExternalServiceError extends MCPError {
 	}
 }
 
+export interface NormalizedToolError {
+	status: "error";
+	title: string;
+	textSections: string[];
+	errorCode?: string;
+	nextSteps?: string[];
+	retryAfterMs?: number;
+	timeoutMs?: number;
+	statusCode?: number;
+	context?: Record<string, unknown>;
+}
+
+export function errorResponseFromError(
+	error: unknown,
+	options: {
+		fallbackTitle?: string;
+		additionalContext?: string[];
+		nextSteps?: string[];
+	} = {},
+): NormalizedToolError {
+	const fallbackTitle = options.fallbackTitle ?? "Unexpected error";
+	let title = fallbackTitle;
+	let errorCode: string | undefined;
+	let retryAfterMs: number | undefined;
+	let timeoutMs: number | undefined;
+	let statusCode: number | undefined;
+	let context: Record<string, unknown> | undefined;
+
+	if (error instanceof MCPError) {
+		title = error.message;
+		errorCode = error.code;
+		statusCode = error.statusCode;
+		context = error.context as Record<string, unknown> | undefined;
+		if (error instanceof RateLimitError && error.retryAfter !== undefined) {
+			retryAfterMs = error.retryAfter;
+		}
+		if (error instanceof TimeoutError && error.timeoutMs !== undefined) {
+			timeoutMs = error.timeoutMs;
+		}
+	} else if (error instanceof Error) {
+		title = error.message;
+	} else if (typeof error === "string") {
+		title = error;
+	}
+
+	logger.error("Tool error encountered", {
+		errorCode,
+		message: title,
+		statusCode,
+		retryAfterMs,
+		timeoutMs,
+		raw: error instanceof Error ? error.stack : error,
+	});
+
+	const textSections = options.additionalContext
+		? [...options.additionalContext]
+		: [];
+
+	return {
+		status: "error",
+		title,
+		textSections,
+		errorCode,
+		nextSteps: options.nextSteps,
+		retryAfterMs,
+		timeoutMs,
+		statusCode,
+		context,
+	};
+}
+
 /**
  * Internal server errors
  */

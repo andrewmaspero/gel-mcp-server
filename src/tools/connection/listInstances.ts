@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
 	enforceRateLimit,
+	getConnectionOutputSchema,
 	handleListInstances,
 	type ToolResult,
 } from "./common.js";
@@ -15,6 +16,7 @@ export function registerConnectionListInstances(server: McpServer) {
 			description:
 				"Enumerate credential files discovered under `instance_credentials/`. Use before setting defaults or switching branches.",
 			inputSchema: {},
+			outputSchema: getConnectionOutputSchema(),
 		},
 		async (): Promise<ToolResult> => {
 			enforceRateLimit(TOOL_NAME);

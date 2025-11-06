@@ -1,7 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import { z, type ZodRawShape } from "zod";
 import {
 	enforceRateLimit,
+	getConnectionOutputSchema,
 	handleSetConnection,
 	type ToolResult,
 } from "./common.js";
@@ -15,7 +16,7 @@ const inputSchema = {
 	branch: z
 		.string()
 		.describe("Optional. Provide to set a specific branch; defaults to `main`."),
-};
+} satisfies ZodRawShape;
 
 export function registerConnectionSet(server: McpServer) {
 	server.registerTool(
@@ -25,6 +26,7 @@ export function registerConnectionSet(server: McpServer) {
 			description:
 				"Update the session defaults to the provided instance and branch. Preconditions: credential file must exist; branches must already exist on the instance.",
 			inputSchema,
+			outputSchema: getConnectionOutputSchema(),
 		},
 		async (args): Promise<ToolResult> => {
 			enforceRateLimit(TOOL_NAME);

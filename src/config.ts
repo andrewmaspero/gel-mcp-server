@@ -189,6 +189,17 @@ const ConfigSchema = z.object({
 				allowedSchemaPatterns: ["^[a-zA-Z_][a-zA-Z0-9_]*$"],
 			},
 		})),
+
+	// Sampling settings
+	sampling: z
+		.object({
+			enabled: z.boolean().default(false),
+			maxTokens: z.number().default(200),
+		})
+		.default(() => ({
+			enabled: false,
+			maxTokens: 200,
+		})),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -291,6 +302,12 @@ export function loadConfig(): Config {
 				parseBool(process.env.GEL_LOG_CONSOLE) ??
 				(process.env.NODE_ENV === "production" ? false : undefined),
 		},
+		sampling: {
+			enabled: parseBool(process.env.GEL_SAMPLING_ENABLED),
+			maxTokens: process.env.GEL_SAMPLING_MAX_TOKENS
+				? parseInt(process.env.GEL_SAMPLING_MAX_TOKENS, 10)
+				: undefined,
+		},
 	};
 
 	// Remove undefined values
@@ -387,6 +404,10 @@ export function createSampleConfig(): void {
 				maxQueryLength: 50000,
 				allowedSchemaPatterns: ["^[a-zA-Z_][a-zA-Z0-9_]*$"],
 			},
+		},
+		sampling: {
+			enabled: false,
+			maxTokens: 200,
 		},
 	};
 
