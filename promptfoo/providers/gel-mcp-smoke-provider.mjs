@@ -1,6 +1,6 @@
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
@@ -94,7 +94,10 @@ export default class GelMcpSmokeProvider {
 		const action = typeof vars.action === "string" ? vars.action : "list-tools";
 		try {
 			if (action === "docs-search") {
-				const term = typeof vars.term === "string" && vars.term.length > 0 ? vars.term : "connection";
+				const term =
+					typeof vars.term === "string" && vars.term.length > 0
+						? vars.term
+						: "connection";
 				return await executeDocsSearch(term);
 			}
 			if (action === "list-resources") {
